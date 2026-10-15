@@ -14,6 +14,9 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/env.php';
+
+
 $base = 'http://localhost/sourianemedia';
 
 $reussis = 0;
@@ -45,7 +48,7 @@ function base(): ?PDO
         return null;
     }
 
-    $env = parse_ini_file(dirname(__DIR__) . '/.env', false, INI_SCANNER_RAW) ?: [];
+    $env = env_fichier(dirname(__DIR__) . '/.env');
     $pdo = new PDO(
         sprintf(
             'mysql:host=%s;port=%s;dbname=%s;charset=%s',
@@ -69,7 +72,7 @@ function client(string $sql): string
     if (!is_file($bin)) {
         return '';
     }
-    $env = parse_ini_file(dirname(__DIR__) . '/.env', false, INI_SCANNER_RAW) ?: [];
+    $env = env_fichier(dirname(__DIR__) . '/.env');
 
     return trim((string) shell_exec(sprintf(
         '%s -h%s -P%s -u%s %s -N -B -e %s 2>&1',
@@ -289,7 +292,7 @@ verifier('sans jeton, le déclencheur répond 403', $sansJeton['code'] === 403, 
 $jetonFaux = http($base . '/tache/notifications?cle=jeton-invalide');
 verifier('avec un jeton invalide, le déclencheur répond 403', $jetonFaux['code'] === 403, 'code ' . $jetonFaux['code']);
 
-$env = parse_ini_file(dirname(__DIR__) . '/.env', false, INI_SCANNER_RAW) ?: [];
+$env = env_fichier(dirname(__DIR__) . '/.env');
 $jeton = (string) ($env['CRON_TOKEN'] ?? '');
 verifier('un jeton est configuré dans .env', $jeton !== '');
 

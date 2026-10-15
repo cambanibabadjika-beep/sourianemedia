@@ -6,6 +6,9 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/env.php';
+
+
 $base = 'http://localhost/sourianemedia';
 $jar  = sys_get_temp_dir() . '/souriane-cookies.txt';
 @unlink($jar);
@@ -222,7 +225,7 @@ function base(): ?PDO
         return null;
     }
 
-    $env = parse_ini_file(dirname(__DIR__) . '/.env', false, INI_SCANNER_RAW) ?: [];
+    $env = env_fichier(dirname(__DIR__) . '/.env');
     $pdo = new PDO(
         sprintf(
             'mysql:host=%s;port=%s;dbname=%s;charset=%s',
@@ -251,7 +254,7 @@ function ecrire(string $sql): int
     if (!is_file($bin)) {
         return 0;
     }
-    $env = parse_ini_file(dirname(__DIR__) . '/.env', false, INI_SCANNER_RAW) ?: [];
+    $env = env_fichier(dirname(__DIR__) . '/.env');
     $sortie = trim((string) shell_exec(sprintf(
         '%s -h%s -P%s -u%s %s -N -B -e %s 2>&1',
         escapeshellarg($bin),

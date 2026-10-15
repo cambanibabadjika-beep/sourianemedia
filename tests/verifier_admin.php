@@ -11,6 +11,9 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/env.php';
+
+
 $base = 'http://localhost/sourianemedia';
 
 $reussis = 0;
@@ -347,7 +350,7 @@ function base(): PDO
         return $pdo;
     }
 
-    $env = parse_ini_file(dirname(__DIR__) . '/.env', false, INI_SCANNER_RAW) ?: [];
+    $env = env_fichier(dirname(__DIR__) . '/.env');
     $pdo = new PDO(
         sprintf(
             'mysql:host=%s;port=%s;dbname=%s;charset=%s',
@@ -397,7 +400,7 @@ function clientMysql(string $sql): string
         return '';
     }
 
-    $env = parse_ini_file(dirname(__DIR__) . '/.env', false, INI_SCANNER_RAW) ?: [];
+    $env = env_fichier(dirname(__DIR__) . '/.env');
     $sortie = shell_exec(sprintf(
         '%s -h%s -P%s -u%s %s -N -B -e %s 2>&1',
         escapeshellarg($client),
