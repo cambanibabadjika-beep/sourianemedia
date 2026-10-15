@@ -24,7 +24,14 @@ final class Visite
     ): int {
         $db = Db::instance();
 
-        $existante = $db->selectOne('SELECT * FROM visites WHERE session_id = :s', ['s' => $sessionId]);
+        // Une session peut compter plusieurs visites successives : seule la
+        // plus récente, si elle est encore ouverte, peut être prolongée.
+        $existante = $db->selectOne(
+            'SELECT id, debut FROM visites
+             WHERE session_id = :s AND fin IS NULL
+             ORDER BY id DESC LIMIT 1',
+            ['s' => $sessionId]
+        );
 
         if ($existante !== null) {
             // Ferme la visite précédente si la fenêtre de session est dépassée
