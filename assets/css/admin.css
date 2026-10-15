@@ -1,0 +1,436 @@
+/* ==========================================================================
+   SOURIANE — Back-office (régie et agents)
+   Reprend les jetons de app.css ; n’est chargé que sur les pages d’administration.
+   ========================================================================== */
+
+:root {
+    --barre-laterale: 254px;
+    --entete-hauteur: 62px;
+}
+
+/* Même fond « aurore » que le site public, en plus discret : le back-office
+   reste un outil de travail, mais les surfaces de verre ont besoin de relief. */
+body.admin {
+    background-color: var(--gris-100);
+    background-image:
+        radial-gradient(40rem 26rem at 8% -6%, rgba(124, 58, 237, .16), transparent 60%),
+        radial-gradient(34rem 24rem at 92% 2%, rgba(196, 181, 253, .34), transparent 62%),
+        radial-gradient(38rem 26rem at 84% 98%, rgba(251, 191, 36, .12), transparent 64%);
+    background-attachment: fixed;
+}
+
+/* --------------------------------------------------------------------------
+   Structure
+   -------------------------------------------------------------------------- */
+.admin-conteneur { display: flex; min-height: 100vh; }
+
+.admin-laterale {
+    width: var(--barre-laterale); flex-shrink: 0;
+    /* Verre teinté sombre : le violet profond reste la couleur de marque, mais
+       la barre laisse deviner le fond derrière elle. */
+    background: linear-gradient(180deg, rgba(46, 16, 101, .94) 0%, rgba(59, 15, 126, .88) 100%);
+    -webkit-backdrop-filter: var(--verre-flou-fort);
+    backdrop-filter: var(--verre-flou-fort);
+    color: rgba(255, 255, 255, .78);
+    display: flex; flex-direction: column;
+    position: fixed; inset: 0 auto 0 0; z-index: 70;
+    overflow-y: auto;
+    border-right: 1px solid rgba(255, 255, 255, .1);
+    transition: transform .26s ease;
+}
+.admin-laterale__marque {
+    padding: 20px 22px; border-bottom: 1px solid rgba(255, 255, 255, .1);
+    display: flex; align-items: center; gap: 11px;
+}
+.admin-laterale__marque .logo__marque { height: 30px; color: var(--or); }
+.admin-laterale__marque .logo__mot { color: #fff; font-size: 1.22rem; }
+
+.admin-nav { padding: 16px 12px; flex: 1; }
+.admin-nav__groupe { margin-bottom: 20px; }
+.admin-nav__titre {
+    font-family: var(--police-titre); font-size: .68rem; font-weight: 600;
+    letter-spacing: .13em; text-transform: uppercase;
+    color: rgba(255, 255, 255, .4); padding: 0 12px; margin-bottom: 8px;
+}
+.admin-nav a {
+    display: flex; align-items: center; gap: 11px;
+    padding: 10px 12px; border-radius: var(--rayon-sm);
+    color: rgba(255, 255, 255, .78); font-size: .91rem; font-weight: 500;
+    margin-bottom: 2px; text-decoration: none;
+}
+.admin-nav a:hover { background: rgba(255, 255, 255, .08); color: #fff; text-decoration: none; }
+.admin-nav a.actif { background: var(--lilas); color: #2E1065; font-weight: 600; }
+.admin-nav a.actif svg { color: #2E1065; }
+.admin-nav svg { width: 18px; height: 18px; flex-shrink: 0; color: rgba(255, 255, 255, .55); }
+.admin-nav__badge {
+    margin-left: auto; background: rgba(255, 255, 255, .14); color: #fff;
+    font-size: .72rem; font-weight: 600; padding: 2px 8px; border-radius: var(--rayon-plein);
+}
+.admin-nav a.actif .admin-nav__badge { background: rgba(46, 16, 101, .20); color: #2E1065; }
+
+.admin-laterale__pied {
+    padding: 16px 20px; border-top: 1px solid rgba(255, 255, 255, .1);
+    font-size: .8rem; color: rgba(255, 255, 255, .45);
+}
+
+.admin-principal {
+    flex: 1; min-width: 0;
+    margin-left: var(--barre-laterale);
+    display: flex; flex-direction: column;
+}
+
+.admin-entete {
+    height: var(--entete-hauteur); flex-shrink: 0;
+    background: var(--verre-fond-fort);
+    -webkit-backdrop-filter: var(--verre-flou-fort);
+    backdrop-filter: var(--verre-flou-fort);
+    border-bottom: 1px solid var(--verre-bord);
+    box-shadow: var(--verre-reflet), 0 4px 18px rgba(76, 29, 149, .06);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; padding: 0 24px;
+    position: sticky; top: 0; z-index: 40;
+}
+.admin-entete__titre {
+    font-family: var(--police-titre); font-weight: 600; font-size: 1.06rem;
+    margin: 0; display: flex; align-items: center; gap: 12px;
+}
+.admin-entete__actions { display: flex; align-items: center; gap: 10px; }
+.admin-entete__utilisateur {
+    display: flex; align-items: center; gap: 10px; font-size: .87rem;
+    padding-left: 12px; border-left: 1px solid var(--gris-200);
+}
+.avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--violet); color: #fff;
+    display: grid; place-items: center;
+    font-family: var(--police-titre); font-weight: 600; font-size: .84rem;
+    flex-shrink: 0;
+}
+
+.admin-contenu { padding: 26px 24px 60px; flex: 1; }
+
+.bouton-menu { display: none; }
+@media (max-width: 1000px) {
+    .admin-laterale { transform: translateX(-100%); box-shadow: var(--ombre-3); }
+    .admin-laterale--ouverte { transform: translateX(0); }
+    .admin-principal { margin-left: 0; }
+    .bouton-menu { display: inline-flex; }
+    .admin-contenu { padding: 20px 16px 60px; }
+}
+
+/* --------------------------------------------------------------------------
+   Cartes et indicateurs
+   -------------------------------------------------------------------------- */
+.panneau {
+    background: var(--verre-fond);
+    -webkit-backdrop-filter: var(--verre-flou);
+    backdrop-filter: var(--verre-flou);
+    border: 1px solid var(--verre-bord);
+    box-shadow: var(--verre-reflet), var(--verre-ombre);
+    border-radius: var(--rayon); margin-bottom: 22px;
+    overflow: hidden;
+}
+.panneau__entete {
+    padding: 17px 22px; border-bottom: 1px solid var(--gris-200);
+    display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+}
+.panneau__titre {
+    font-family: var(--police-titre); font-weight: 600; font-size: 1rem; margin: 0;
+    display: flex; align-items: center; gap: 10px;
+}
+.panneau__titre svg { width: 19px; height: 19px; color: var(--violet); }
+.panneau__corps { padding: 22px; }
+.panneau__corps--sans-marge { padding: 0; }
+
+.indicateurs { display: grid; gap: 16px; grid-template-columns: repeat(4, 1fr); margin-bottom: 22px; }
+@media (max-width: 1180px) { .indicateurs { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .indicateurs { grid-template-columns: 1fr; } }
+
+.indicateur {
+    background: var(--verre-fond);
+    -webkit-backdrop-filter: var(--verre-flou);
+    backdrop-filter: var(--verre-flou);
+    border: 1px solid var(--verre-bord);
+    box-shadow: var(--verre-reflet), var(--verre-ombre);
+    border-radius: var(--rayon);
+    padding: 19px 20px; position: relative; overflow: hidden;
+}
+/* Liseré lumineux en haut de chaque indicateur : le reflet d'arête du verre. */
+.indicateur::after {
+    content: '';
+    position: absolute; inset: 0 0 auto 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .95), transparent);
+    pointer-events: none;
+}
+.indicateur__etiquette {
+    font-size: .78rem; color: var(--gris-500); font-weight: 500;
+    text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px;
+}
+.indicateur__valeur {
+    font-family: var(--police-titre); font-weight: 700;
+    font-size: 1.85rem; line-height: 1.1; color: var(--charbon);
+}
+.indicateur__detail { font-size: .82rem; color: var(--gris-500); margin-top: 6px; }
+.indicateur__icone {
+    position: absolute; right: 16px; top: 16px;
+    width: 38px; height: 38px; border-radius: 11px;
+    display: grid; place-items: center;
+    background: var(--violet-100); color: var(--violet);
+}
+.indicateur__icone svg { width: 20px; height: 20px; }
+.indicateur--lilas .indicateur__icone { background: var(--lilas-100); color: var(--lilas-700); }
+.indicateur--or .indicateur__icone { background: var(--or-100); color: var(--or-700); }
+.indicateur--gris .indicateur__icone { background: var(--gris-100); color: var(--gris-600); }
+
+/* Nature de la donnée : mesuré / estimé / déclaré (EF-F07) */
+.nature {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+    padding: 3px 8px; border-radius: var(--rayon-plein);
+}
+.nature--mesure { background: var(--succes-fond); color: var(--succes); }
+.nature--estime { background: var(--attention-fond); color: var(--attention); }
+.nature--declare { background: var(--gris-200); color: var(--gris-700); }
+
+/* --------------------------------------------------------------------------
+   Tableaux
+   -------------------------------------------------------------------------- */
+.tableau-enveloppe { overflow-x: auto; }
+.tableau { width: 100%; border-collapse: collapse; font-size: .89rem; }
+.tableau th {
+    text-align: left; font-family: var(--police-titre); font-weight: 600;
+    font-size: .76rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--gris-500); padding: 12px 16px;
+    background: rgba(249, 247, 252, .72);
+    border-bottom: 1px solid var(--gris-200);
+    white-space: nowrap;
+}
+.tableau td {
+    padding: 13px 16px; border-bottom: 1px solid var(--gris-100);
+    vertical-align: middle;
+}
+.tableau tbody tr:hover { background: var(--violet-50); }
+.tableau tbody tr:last-child td { border-bottom: none; }
+.tableau__principal { font-weight: 600; color: var(--charbon); }
+.tableau__secondaire { font-size: .8rem; color: var(--gris-500); }
+.tableau__actions { display: flex; gap: 6px; justify-content: flex-end; }
+.tableau__numerique { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* --------------------------------------------------------------------------
+   Étiquettes d’état
+   -------------------------------------------------------------------------- */
+.etat {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: .76rem; font-weight: 600; padding: 4px 10px;
+    border-radius: var(--rayon-plein); white-space: nowrap;
+}
+.etat::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.etat--disponible, .etat--actif, .etat--publiee, .etat--envoyee, .etat--conforme { background: var(--succes-fond); color: var(--succes); }
+.etat--reserve, .etat--reservee, .etat--programmee, .etat--maintenance { background: var(--attention-fond); color: var(--attention); }
+.etat--occupe, .etat--en_cours { background: var(--info-fond); color: var(--info); }
+.etat--brouillon, .etat--inactif, .etat--depubliee, .etat--non_fait { background: var(--gris-200); color: var(--gris-700); }
+.etat--annulee, .etat--archive, .etat--desabonne, .etat--echec, .etat--expire, .etat--non_conforme { background: var(--alerte-fond); color: var(--alerte); }
+.etat--terminee { background: var(--violet-100); color: var(--violet); }
+.etat--nouveau { background: var(--violet-100); color: var(--violet); }
+.etat--contacte { background: var(--info-fond); color: var(--info); }
+.etat--converti { background: var(--succes-fond); color: var(--succes); }
+
+/* --------------------------------------------------------------------------
+   Formulaires
+   -------------------------------------------------------------------------- */
+.champ { margin-bottom: 18px; }
+.champ__etiquette {
+    display: block; font-family: var(--police-titre); font-weight: 500;
+    font-size: .87rem; margin-bottom: 7px; color: var(--gris-800);
+}
+.champ__etiquette .requis { color: var(--alerte); }
+.champ__aide { font-size: .79rem; color: var(--gris-500); margin-top: 6px; }
+.champ__erreur { font-size: .8rem; color: var(--alerte); margin-top: 6px; }
+
+.saisie, .liste, .zone-texte {
+    width: 100%; padding: 11px 14px;
+    border: 1.5px solid var(--gris-300); border-radius: var(--rayon-sm);
+    background: rgba(255, 255, 255, .78);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    font-size: .93rem;
+    transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.saisie:focus, .liste:focus, .zone-texte:focus {
+    outline: none; border-color: var(--lilas-700);
+    background: rgba(255, 255, 255, .95);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, .20);
+}
+.saisie--erreur { border-color: var(--alerte); }
+.zone-texte { min-height: 110px; resize: vertical; line-height: 1.55; }
+.liste { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; padding-right: 38px; }
+
+.grille-champs { display: grid; gap: 0 18px; grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 700px) { .grille-champs { grid-template-columns: 1fr; } }
+.grille-champs--3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 900px) { .grille-champs--3 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 700px) { .grille-champs--3 { grid-template-columns: 1fr; } }
+.pleine-largeur { grid-column: 1 / -1; }
+
+.case {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 14px; border: 1.5px solid var(--gris-200);
+    border-radius: var(--rayon-sm); cursor: pointer; font-size: .91rem;
+}
+.case:has(input:checked) { border-color: var(--lilas-700); background: var(--lilas-100); }
+.case input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--lilas-700); flex-shrink: 0; }
+.case small { display: block; color: var(--gris-600); font-size: .81rem; }
+
+/* Barre de filtres */
+.filtres {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
+    padding: 16px 22px; background: var(--gris-50); border-bottom: 1px solid var(--gris-200);
+}
+.filtres .champ { margin: 0; }
+.filtres .saisie, .filtres .liste { min-width: 168px; }
+.filtres__recherche { flex: 1; min-width: 220px; }
+
+/* --------------------------------------------------------------------------
+   Statistiques
+   -------------------------------------------------------------------------- */
+.barre-progression {
+    height: 8px; border-radius: 999px; background: var(--gris-200); overflow: hidden;
+}
+.barre-progression__remplissage { height: 100%; background: var(--lilas); border-radius: 999px; transition: width .4s ease; }
+
+.liste-stats { display: grid; gap: 14px; }
+.liste-stats__ligne { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: center; }
+.liste-stats__etiquette { font-size: .88rem; color: var(--gris-700); }
+.liste-stats__valeur { font-family: var(--police-titre); font-weight: 600; font-size: .95rem; }
+.liste-stats__barre { grid-column: 1 / -1; }
+
+/* --------------------------------------------------------------------------
+   QR code et code court
+   -------------------------------------------------------------------------- */
+.carte-qr {
+    border: 1px solid var(--verre-bord); border-radius: var(--rayon);
+    padding: 18px; text-align: center;
+    background: var(--verre-fond);
+    -webkit-backdrop-filter: var(--verre-flou);
+    backdrop-filter: var(--verre-flou);
+    box-shadow: var(--verre-reflet), var(--verre-ombre);
+}
+.carte-qr__code {
+    font-family: var(--police-titre); font-weight: 700; font-size: 1.15rem;
+    letter-spacing: .1em; color: var(--violet); margin-bottom: 12px;
+}
+/* Le fond du QR code reste blanc pur : le contraste est une condition de
+   lisibilité à la lecture, on ne le rend donc jamais translucide. */
+.carte-qr__image { display: grid; place-items: center; padding: 10px; background: #fff; border-radius: var(--rayon-sm); }
+.carte-qr__image svg { width: 100%; max-width: 230px; height: auto; }
+.carte-qr__pied { margin-top: 12px; font-size: .8rem; color: var(--gris-500); }
+.carte-qr__secours {
+    font-family: var(--police-titre); font-weight: 600; font-size: .95rem;
+    color: var(--charbon); background: var(--gris-100);
+    padding: 8px; border-radius: var(--rayon-xs); margin-top: 10px;
+    letter-spacing: .04em;
+}
+
+.grille-qr { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+
+/* --------------------------------------------------------------------------
+   Divers
+   -------------------------------------------------------------------------- */
+.pile { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.pile--droite { justify-content: flex-end; }
+.pile--entre { justify-content: space-between; }
+.ecart-haut { margin-top: 20px; }
+.ecart-haut--grand { margin-top: 32px; }
+.texte-petit { font-size: .83rem; color: var(--gris-500); }
+.texte-centre { text-align: center; }
+.monospace { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: .86em; }
+
+.separateur { height: 1px; background: var(--gris-200); margin: 22px 0; border: 0; }
+
+.onglets { display: flex; gap: 4px; border-bottom: 1px solid var(--gris-200); margin-bottom: 22px; overflow-x: auto; }
+.onglets a {
+    padding: 11px 16px; font-size: .9rem; font-weight: 500; color: var(--gris-600);
+    border-bottom: 2.5px solid transparent; white-space: nowrap; text-decoration: none;
+}
+.onglets a:hover { color: var(--violet); text-decoration: none; }
+.onglets a.actif { color: var(--violet); border-bottom-color: var(--lilas-700); font-weight: 600; }
+
+/* Écran de connexion */
+.connexion-page {
+    min-height: 100vh; display: grid; place-items: center;
+    background: linear-gradient(150deg, var(--violet) 0%, var(--violet-900) 100%);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+}
+/* Halos dérivants : ils donnent au verre de la carte de connexion de quoi
+   se nourrir, et rappellent le mouvement du site public. */
+.connexion-page::before,
+.connexion-page::after {
+    content: ''; position: absolute; border-radius: 50%; pointer-events: none;
+}
+.connexion-page::before {
+    width: 620px; height: 620px; left: -18%; top: -28%;
+    background: radial-gradient(circle, rgba(167, 139, 250, .45), transparent 66%);
+    animation: halos-derive 24s ease-in-out infinite;
+}
+.connexion-page::after {
+    width: 560px; height: 560px; right: -16%; bottom: -30%;
+    background: radial-gradient(circle, rgba(251, 191, 36, .22), transparent 68%);
+    animation: halos-derive 30s ease-in-out infinite reverse;
+}
+.connexion-carte {
+    width: 100%; max-width: 410px;
+    position: relative; z-index: 1;
+    background: rgba(255, 255, 255, .82);
+    -webkit-backdrop-filter: var(--verre-flou-fort);
+    backdrop-filter: var(--verre-flou-fort);
+    border: 1px solid var(--verre-bord);
+    border-radius: var(--rayon-lg); padding: 38px 34px;
+    box-shadow: var(--verre-reflet), 0 24px 60px rgba(26, 16, 51, .38);
+}
+.connexion-carte__marque { display: flex; justify-content: center; margin-bottom: 26px; }
+.connexion-carte h1 { font-size: 1.35rem; text-align: center; margin-bottom: 6px; }
+.connexion-carte__intro { text-align: center; color: var(--gris-500); font-size: .9rem; margin-bottom: 26px; }
+
+/* Encart d’aide */
+.encart {
+    background: var(--violet-50); border-left: 3px solid var(--lilas);
+    border-radius: 0 var(--rayon-sm) var(--rayon-sm) 0;
+    padding: 14px 17px; font-size: .87rem; color: var(--gris-700); margin-bottom: 18px;
+}
+.encart strong { color: var(--charbon); }
+.encart--avertissement { background: var(--attention-fond); border-left-color: var(--or-700); color: #78350F; }
+
+/* --------------------------------------------------------------------------
+   Repli sans flou d'arrière-plan
+   --------------------------------------------------------------------------
+   Sans backdrop-filter, le verre deviendrait un aplat translucide illisible.
+   On repasse alors sur des surfaces opaques, en conservant le reflet d'arête
+   pour ne pas perdre complètement le relief.
+   -------------------------------------------------------------------------- */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .admin-entete { background: #fff; border-bottom-color: var(--gris-200); }
+    .panneau, .indicateur, .carte-qr { background: #fff; border-color: var(--gris-200); }
+    .connexion-carte { background: #fff; border-color: var(--gris-200); }
+    .admin-laterale {
+        background: linear-gradient(180deg, #2E1065 0%, #3B0F7E 100%);
+    }
+    .saisie, .liste, .zone-texte { background: #fff; }
+}
+
+/* --------------------------------------------------------------------------
+   Impression
+   -------------------------------------------------------------------------- */
+@media print {
+    body.admin { background: #fff; }
+    .admin-laterale, .admin-entete, .bouton-menu { display: none !important; }
+    .admin-principal { margin-left: 0; }
+    .panneau, .indicateur, .carte-qr, .connexion-carte {
+        background: #fff !important;
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+    }
+}

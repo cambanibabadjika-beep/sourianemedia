@@ -1,0 +1,73 @@
+# ============================================================================
+#  SOURIANE — Réécriture d’URL et durcissement
+# ============================================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Si l’application est servie dans un sous-dossier, adapter la base
+    # RewriteBase /sourianemedia/
+
+    # Ne pas réécrire les fichiers et dossiers existants
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Tout le reste passe par le point d’entrée
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# --- Types MIME utiles ------------------------------------------------------
+<IfModule mod_mime.c>
+    AddType application/manifest+json .webmanifest
+    AddType image/svg+xml          .svg
+    AddType application/javascript .js
+</IfModule>
+
+# --- Service worker : toujours revalidé -------------------------------------
+<FilesMatch "^(service-worker|sw)\.js$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-cache, must-revalidate"
+        Header set Service-Worker-Allowed "/"
+    </IfModule>
+</FilesMatch>
+
+# --- Interdire l’accès direct au code applicatif ----------------------------
+<IfModule mod_rewrite.c>
+    RewriteRule ^(app|storage|sql|cron)/ - [F,L]
+</IfModule>
+
+# --- Interdire les fichiers sensibles ---------------------------------------
+<FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|.*\.sql|.*\.log|.*\.md)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# --- En-têtes de sécurité ---------------------------------------------------
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# --- Compression ------------------------------------------------------------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript
+    AddOutputFilterByType DEFLATE application/javascript application/json application/manifest+json image/svg+xml
+</IfModule>
+
+# --- Cache des ressources statiques -----------------------------------------
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css              "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/svg+xml          "access plus 1 year"
+    ExpiresByType image/png              "access plus 1 year"
+    ExpiresByType image/jpeg             "access plus 1 year"
+    ExpiresByType image/webp             "access plus 1 year"
+</IfModule>

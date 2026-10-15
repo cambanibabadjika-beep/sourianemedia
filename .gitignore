@@ -1,0 +1,21 @@
+# Secrets (mots de passe BDD, clés VAPID, etc.) — ne JAMAIS publier
+.env
+.env.*
+!.env.example
+
+# Données générées à l'exécution
+storage/limites/
+storage/logs/*
+!storage/logs/.gitignore
+storage/uploads/*
+!storage/uploads/.gitignore
+
+# Scripts de débogage locaux
+repro_*.php
+
+# Outils / IDE / système
+.workbuddy-ai/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

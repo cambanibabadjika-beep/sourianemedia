@@ -1,0 +1,63 @@
+{
+    "name": "Souriane — Votre panneau vous parle",
+    "short_name": "Souriane",
+    "description": "La plateforme d’affichage extérieur connecté : chaque panneau porte un QR code qui ouvre la page de l’annonceur, puis permet d’installer l’application et de recevoir ses offres.",
+    "lang": "fr",
+    "dir": "ltr",
+    "id": "./",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "display_override": ["standalone", "minimal-ui", "browser"],
+    "orientation": "portrait-primary",
+    "background_color": "#FFFFFF",
+    "theme_color": "#4C1D95",
+    "categories": ["business", "shopping", "news"],
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "assets/img/icons/icone-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "assets/img/icons/icone-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "assets/img/icons/icone-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Le parc de panneaux",
+            "short_name": "Le parc",
+            "url": "./le-parc",
+            "icons": [
+                {
+                    "src": "assets/img/icons/icone-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        },
+        {
+            "name": "Devenir annonceur",
+            "short_name": "Annonceurs",
+            "url": "./annonceurs",
+            "icons": [
+                {
+                    "src": "assets/img/icons/icone-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
+        }
+    ]
+}
