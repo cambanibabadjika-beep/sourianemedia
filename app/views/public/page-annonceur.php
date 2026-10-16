@@ -318,6 +318,21 @@ $libellesReseaux = [
             </div>
         <?php endif; ?>
 
+        <!-- 11 bis. Découvrir les autres offres du réseau (EF-E11) ------------ -->
+        <div class="bloc">
+            <h2 class="bloc__titre"><?= Icone::svg('etincelle') ?> Découvrir d’autres offres</h2>
+            <div class="bloc__texte">
+                <p>
+                    Ce panneau n’est pas le seul du réseau. Les offres en cours de tous les
+                    annonceurs Souriane sont rassemblées au même endroit.
+                </p>
+            </div>
+            <a class="btn btn--contour btn--large" href="<?= e(url('decouvrir')) ?>" data-action="clic_decouvrir">
+                <?= Icone::svg('suivant') ?>
+                Voir les autres publicités
+            </a>
+        </div>
+
         <!-- 12. Rester informé (ch. 5.3) -------------------------------------- -->
         <div class="rester-informe">
             <h3><?= __('annonceur.rester_informe', 'Rester informé') ?></h3>
@@ -362,105 +377,20 @@ $libellesReseaux = [
 
 <!-- ======================================================================
      Panneau glissant « Rester informé » (ch. 5.3)
+     ----------------------------------------------------------------------
+     Le balisage est mutualisé avec la page « Découvrir les offres » : il vit
+     dans partials/feuille-informe.php, et les identifiants attendus par
+     assets/js/app.js y sont définis une seule fois.
      ====================================================================== -->
-<div class="voile" id="voile-informe" hidden></div>
-
-<div class="feuille" id="feuille-informe" role="dialog" aria-modal="true" aria-labelledby="titre-feuille-informe" hidden>
-    <div class="feuille__poignee"></div>
-
-    <h3 id="titre-feuille-informe"><?= __('annonceur.rester_informe', 'Rester informé') ?></h3>
-    <p class="feuille__intro">
-        Deux façons de garder le contact avec <?= e((string) $page['nom']) ?>. Choisissez celle qui vous convient.
-    </p>
-
-    <!-- Action 1 : installer la page sur le téléphone -->
-    <button type="button" class="action-informe" id="action-installer">
-        <span class="action-informe__icone"><?= Icone::svg('telecharger') ?></span>
-        <span style="flex:1;min-width:0">
-            <span class="action-informe__titre">
-                Installer sur mon téléphone
-                <span class="action-informe__etat" id="etat-installe" hidden>Installé</span>
-            </span>
-            <span class="action-informe__benefice">
-                La page s’ouvre comme une application, sans passer par le navigateur.
-            </span>
-        </span>
-    </button>
-
-    <!-- Action 2 : recevoir les notifications -->
-    <button type="button" class="action-informe action-informe--lilas" id="action-notifier">
-        <span class="action-informe__icone"><?= Icone::svg('cloche') ?></span>
-        <span style="flex:1;min-width:0">
-            <span class="action-informe__titre">
-                Recevoir les offres
-                <span class="action-informe__etat" id="etat-abonne" hidden>Abonné</span>
-            </span>
-            <span class="action-informe__benefice">
-                Une notification à chaque nouvelle offre. Quatre par mois au maximum.
-            </span>
-        </span>
-    </button>
-
-    <!-- Choix de la fréquence -->
-    <div class="frequence" id="bloc-frequence" hidden>
-        <div class="frequence__titre">À quelle fréquence ?</div>
-        <div class="frequence__options">
-            <label class="frequence__option">
-                <input type="radio" name="frequence" value="chaque_annonce" checked>
-                <span>À chaque nouvelle offre<small>Vous ne manquez rien.</small></span>
-            </label>
-            <label class="frequence__option">
-                <input type="radio" name="frequence" value="hebdomadaire">
-                <span>Un résumé par semaine<small>Une seule notification, le lundi.</small></span>
-            </label>
-        </div>
-    </div>
-
-    <!-- Tutoriel iOS (EF-E05) -->
-    <div class="tutoriel" id="tutoriel-ios" hidden>
-        <div class="tutoriel__etape">
-            <span class="tutoriel__numero">1</span>
-            <p>Appuyez sur le bouton <strong>Partager</strong>
-                <span class="icone-partage"><?= Icone::svg('partage') ?></span>
-                en bas de l’écran.</p>
-        </div>
-        <div class="tutoriel__etape">
-            <span class="tutoriel__numero">2</span>
-            <p>Faites défiler puis choisissez <strong>« Sur l’écran d’accueil »</strong>.</p>
-        </div>
-        <div class="tutoriel__etape">
-            <span class="tutoriel__numero">3</span>
-            <p>Appuyez sur <strong>Ajouter</strong>. Rouvrez ensuite la page depuis l’icône,
-               puis activez les notifications.</p>
-        </div>
-    </div>
-
-    <!-- Explication de la restriction iOS (ch. 5.5) -->
-    <div class="conditions" id="note-ios" hidden style="margin-top:16px">
-        <div class="conditions__titre"><?= Icone::svg('info') ?> Sur iPhone</div>
-        Les notifications ne sont possibles qu’après avoir ajouté la page à l’écran d’accueil
-        (iOS 16.4 ou plus récent).
-    </div>
-
-    <!-- Repli WhatsApp -->
-    <?php if (whatsapp_lien($whatsapp) !== ''): ?>
-        <a class="action-informe action-informe--or" href="<?= e(whatsapp_lien($whatsapp, $messageWhatsapp)) ?>" rel="noopener" style="text-decoration:none" data-action="clic_whatsapp">
-            <span class="action-informe__icone"><?= Icone::svg('whatsapp') ?></span>
-            <span style="flex:1;min-width:0">
-                <span class="action-informe__titre">Recevoir les offres par WhatsApp</span>
-                <span class="action-informe__benefice">
-                    Solution de repli si les notifications ne sont pas disponibles sur votre appareil.
-                </span>
-            </span>
-        </a>
-    <?php endif; ?>
-
-    <p class="texte-petit" style="margin-top:14px">
-        En activant les notifications, vous acceptez de recevoir les offres de cet annonceur.
-        Vous pouvez vous désinscrire depuis cette même fenêtre, à tout moment.
-    </p>
-
-    <button type="button" class="btn btn--contour btn--large" id="fermer-feuille" style="margin-top:14px">
-        Fermer
-    </button>
-</div>
+<?php
+$feuilleTitre           = __('annonceur.rester_informe', 'Rester informé');
+$feuilleIntro           = sprintf(
+    'Deux façons de garder le contact avec %s. Choisissez celle qui vous convient.',
+    (string) $page['nom']
+);
+$feuilleWhatsapp        = $whatsapp;
+$feuilleMessageWhatsapp = $messageWhatsapp;
+$feuillePortee          = 'annonceur';
+$feuilleSansAnnonceur   = false;
+require __DIR__ . '/../partials/feuille-informe.php';
+?>

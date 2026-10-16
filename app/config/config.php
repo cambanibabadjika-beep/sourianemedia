@@ -95,6 +95,24 @@ define('VAPID_PRIVATE_KEY', (string) env('VAPID_PRIVATE_KEY', ''));
 
 define('RATE_LIMIT_WINDOW', (int) env('RATE_LIMIT_WINDOW', 60));
 define('RATE_LIMIT_MAX', (int) env('RATE_LIMIT_MAX', 60));
+
+/*
+ * Verrouillage des connexions (ch. 8).
+ *
+ * Seules les tentatives ÉCHOUÉES comptent, et une connexion réussie remet le
+ * compteur à zéro. Cinq mots de passe erronés bloquent donc l’adresse pendant
+ * trois minutes : assez pour arrêter une attaque par dictionnaire, assez court
+ * pour ne pas punir une faute de frappe sur un clavier de téléphone.
+ *
+ * Réglable dans .env (SECURITE_CONNEXION_MAX_ECHECS, SECURITE_CONNEXION_FENETRE).
+ */
+define('SECURITE_CONNEXION_MAX_ECHECS', (int) env('SECURITE_CONNEXION_MAX_ECHECS', 5));
+define('SECURITE_CONNEXION_FENETRE', (int) env('SECURITE_CONNEXION_FENETRE', 180));
+
+/** Tentatives de code à deux facteurs avant blocage temporaire. */
+define('SECURITE_CODE_MAX_ESSAIS', (int) env('SECURITE_CODE_MAX_ESSAIS', 10));
+define('SECURITE_CODE_FENETRE', (int) env('SECURITE_CODE_FENETRE', 300));
+
 define('WHATSAPP_REGIE', (string) env('WHATSAPP_REGIE', ''));
 
 // Jeton d’accès à la tâche planifiée, pour les hébergements sans crontab.
@@ -121,6 +139,31 @@ define('DUREE_SESSION_MINUTES', 30);       // fenêtre de décompte d’une visi
 // forcer l’enrôlement de personne. Remettre ['regie', 'agent'] pour réactiver
 // la politique de sécurité (les comptes conservent leur état totp_actif).
 define('SECURITE_2FA_ROLES', []);
+
+/*
+ * Second facteur — dérogation de développement (SECURITE_2FA_SANS_CODE).
+ *
+ * SECURITE_2FA_ROLES ne couvre que l’enrôlement IMPOSÉ : vider la liste
+ * dispense de mettre un second facteur en place, mais ne dispense pas de
+ * saisir un code sur un compte DÉJÀ enrôlé. Les deux réglages sont donc
+ * distincts, et c’est ce second réglage qui allège une phase de dev.
+ *
+ * Cette dérogation dispense de saisir le code à la connexion. Elle ne touche
+ * à rien de ce qui est rangé : secrets et codes de secours restent en base, et
+ * un compte enrôlé le reste. Repasser le réglage à false rétablit l’exigence
+ * sans réenrôlement.
+ *
+ * Elle est refusée en production : une dérogation qui pourrait suivre le code
+ * jusqu’en production n’est plus un confort de développement, c’est une porte
+ * dérobée — et le chapitre 8 impose le second facteur aux comptes
+ * d’administration.
+ */
+$sansCode2fa = (bool) env('SECURITE_2FA_SANS_CODE', false);
+if ($sansCode2fa && APP_ENV === 'production') {
+    error_log('SECURITE_2FA_SANS_CODE ignoré : cette dérogation est refusée en production.');
+    $sansCode2fa = false;
+}
+define('SECURITE_2FA_SANS_CODE', $sansCode2fa);
 
 /** Nombre de codes de secours remis à l’activation (téléphone perdu). */
 define('SECURITE_2FA_CODES_SECOURS', 8);

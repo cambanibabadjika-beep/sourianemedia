@@ -455,10 +455,11 @@
        6. Abonnement aux notifications (ch. 5.5)
        --------------------------------------------------------------------- */
     var Notifications = (function () {
-        var bouton    = null;
-        var etat      = null;
-        var blocFreq  = null;
-        var noteIos   = null;
+        var bouton     = null;
+        var etat       = null;
+        var blocFreq   = null;
+        var blocPortee = null;
+        var noteIos    = null;
         var abonnement = null;
 
         function prisEnCharge() {
@@ -482,6 +483,18 @@
             return choix ? choix.value : 'chaque_annonce';
         }
 
+        /**
+         * Portée de l’abonnement : un seul annonceur, ou tout le réseau.
+         * Par défaut « annonceur » — le comportement d’origine, qui ne
+         * surprend personne. Sur la page de découverte, seule l’option
+         * « plateforme » est proposée et se trouve donc déjà cochée.
+         */
+        function porteeChoisie() {
+            var choix = document.querySelector('input[name="portee"]:checked');
+
+            return choix ? choix.value : 'annonceur';
+        }
+
         function rafraichir() {
             if (!bouton || !etat) {
                 return;
@@ -496,6 +509,9 @@
                 if (C.ios && noteIos) {
                     noteIos.hidden = false;
                 }
+                if (blocPortee) {
+                    blocPortee.hidden = true;
+                }
                 return;
             }
 
@@ -507,6 +523,10 @@
                 if (blocFreq) {
                     blocFreq.hidden = false;
                 }
+                // Déjà abonné : la portée a été choisie au moment de l’inscription.
+                if (blocPortee) {
+                    blocPortee.hidden = true;
+                }
                 return;
             }
 
@@ -516,6 +536,10 @@
                 'Une notification à chaque nouvelle offre. Quatre par mois au maximum.';
             if (blocFreq) {
                 blocFreq.hidden = true;
+            }
+            // Avant l’inscription : on laisse choisir l’étendue de l’abonnement.
+            if (blocPortee) {
+                blocPortee.hidden = false;
             }
         }
 
@@ -536,7 +560,7 @@
                     var donnees = sub.toJSON();
 
                     return requete('/abonnements', {
-                        annonceur_id:  C.annonceur,
+                        annonceur_id:  C.annonceur || null,
                         code_court_id: C.codeId || null,
                         page_id:       C.page || null,
                         campagne_id:   C.campagne || null,
@@ -544,7 +568,8 @@
                         session_id:    C.session || null,
                         endpoint:      donnees.endpoint,
                         keys:          donnees.keys,
-                        frequence:     frequenceChoisie()
+                        frequence:     frequenceChoisie(),
+                        portee:        porteeChoisie()
                     }).then(function () {
                         abonnement = sub;
                         Mesure.ajouter('abonnement');
@@ -572,10 +597,11 @@
         }
 
         function init() {
-            bouton   = $('#action-notifier');
-            etat     = $('#etat-abonne');
-            blocFreq = $('#bloc-frequence');
-            noteIos  = $('#note-ios');
+            bouton     = $('#action-notifier');
+            etat       = $('#etat-abonne');
+            blocFreq   = $('#bloc-frequence');
+            blocPortee = $('#bloc-portee');
+            noteIos    = $('#note-ios');
 
             if (!bouton) {
                 return;

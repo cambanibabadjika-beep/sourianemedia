@@ -127,8 +127,16 @@ $menu = [
         </nav>
 
         <div class="admin-laterale__pied">
-            <?= e(APP_NAME) ?> v<?= e(APP_VERSION) ?><br>
-            <a href="<?= e(url('/')) ?>" style="color:inherit">Voir le site public</a>
+            <div style="margin-bottom:8px">
+                <?= e(APP_NAME) ?> v<?= e(APP_VERSION) ?><br>
+                <a href="<?= e(url('/')) ?>" style="color:inherit">Voir le site public</a>
+            </div>
+            <?php if ($utilisateur !== null): ?>
+                <button type="button" class="btn-deconnexion-laterale" id="bouton-deconnexion-laterale" aria-haspopup="dialog" aria-controls="dialogue-deconnexion">
+                    <?= Icone::svg('deconnexion') ?>
+                    <span>Se déconnecter</span>
+                </button>
+            <?php endif; ?>
         </div>
     </aside>
 
@@ -151,9 +159,9 @@ $menu = [
                             <strong style="display:block;line-height:1.2"><?= e((string) $utilisateur['nom']) ?></strong>
                             <span class="texte-petit"><?= e(\Souriane\Models\Utilisateur::ROLES[$utilisateur['role']] ?? $utilisateur['role']) ?></span>
                         </span>
-                        <form method="post" action="<?= e(url('admin/deconnexion')) ?>" style="margin:0">
+                        <form method="post" action="<?= e(url('admin/deconnexion')) ?>" style="margin:0" id="formulaire-deconnexion-entete">
                             <?= \Souriane\Core\Csrf::champ() ?>
-                            <button type="submit" class="btn btn--contour btn--petit" title="Se déconnecter">
+                            <button type="submit" class="btn btn--contour btn--petit" title="Se déconnecter" id="bouton-deconnexion-entete" aria-haspopup="dialog" aria-controls="dialogue-deconnexion">
                                 <?= Icone::svg('deconnexion') ?>
                                 <span class="sr-only">Se déconnecter</span>
                             </button>
@@ -174,6 +182,60 @@ $menu = [
     </div>
 </div>
 
+<?php if ($utilisateur !== null): ?>
+<!-- Dialogue de confirmation de déconnexion --------------------------------- -->
+<dialog id="dialogue-deconnexion" class="dialogue-deconnexion" aria-labelledby="titre-dialogue-deconnexion" aria-describedby="desc-dialogue-deconnexion">
+    <div class="dialogue-deconnexion__carte">
+        <div class="dialogue-deconnexion__entete">
+            <div class="dialogue-deconnexion__badge-icone" aria-hidden="true">
+                <?= Icone::svg('deconnexion') ?>
+            </div>
+            <button type="button" class="dialogue-deconnexion__fermer" id="bouton-fermer-dialogue-deconnexion" title="Fermer" aria-label="Fermer la boîte de dialogue">
+                <?= Icone::svg('fermer') ?>
+            </button>
+        </div>
+
+        <div class="dialogue-deconnexion__corps">
+            <h2 id="titre-dialogue-deconnexion" class="dialogue-deconnexion__titre">Confirmer la déconnexion</h2>
+            <p id="desc-dialogue-deconnexion" class="dialogue-deconnexion__message">
+                Êtes-vous sûr de vouloir vous déconnecter de votre session d’administration ?
+            </p>
+
+            <div class="dialogue-deconnexion__utilisateur">
+                <span class="dialogue-deconnexion__avatar" aria-hidden="true"><?= e($initiales !== '' ? $initiales : 'SA') ?></span>
+                <div class="dialogue-deconnexion__utilisateur-texte">
+                    <strong class="dialogue-deconnexion__utilisateur-nom"><?= e((string) $utilisateur['nom']) ?></strong>
+                    <span class="dialogue-deconnexion__utilisateur-role">
+                        <?= e(\Souriane\Models\Utilisateur::ROLES[$utilisateur['role']] ?? $utilisateur['role']) ?>
+                        <?php if (!empty($utilisateur['email'])): ?>
+                            <span class="dialogue-deconnexion__point-separateur">·</span> <span class="dialogue-deconnexion__utilisateur-email"><?= e((string) $utilisateur['email']) ?></span>
+                        <?php endif; ?>
+                    </span>
+                </div>
+            </div>
+
+            <div class="dialogue-deconnexion__rappel">
+                <?= Icone::svg('info') ?>
+                <span>Pour des raisons de sécurité, fermez votre navigateur si vous utilisez un appareil partagé.</span>
+            </div>
+        </div>
+
+        <div class="dialogue-deconnexion__actions">
+            <button type="button" class="btn btn--contour" id="bouton-annuler-deconnexion">
+                Annuler
+            </button>
+            <form method="post" action="<?= e(url('admin/deconnexion')) ?>" style="margin:0" id="formulaire-deconnexion-confirme">
+                <?= \Souriane\Core\Csrf::champ() ?>
+                <button type="submit" class="btn btn--danger" id="bouton-confirmer-deconnexion">
+                    <?= Icone::svg('deconnexion') ?>
+                    <span>Se déconnecter</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</dialog>
+<?php endif; ?>
+
 <script>
 (function () {
     var bouton  = document.getElementById('bouton-menu');
@@ -188,6 +250,71 @@ $menu = [
                 lat.classList.remove('admin-laterale--ouverte');
             }
         });
+    }
+
+    /* Fenêtre de confirmation de déconnexion */
+    var dialogue = document.getElementById('dialogue-deconnexion');
+    if (dialogue) {
+        var formDeclencheur = document.getElementById('formulaire-deconnexion-entete');
+        var btnLaterale     = document.getElementById('bouton-deconnexion-laterale');
+        var btnAnnuler      = document.getElementById('bouton-annuler-deconnexion');
+        var btnFermerCroix  = document.getElementById('bouton-fermer-dialogue-deconnexion');
+        var formConfirme    = document.getElementById('formulaire-deconnexion-confirme');
+        var btnConfirmer    = document.getElementById('bouton-confirmer-deconnexion');
+
+        function ouvrirDialogue(e) {
+            if (e) { e.preventDefault(); }
+            if (typeof dialogue.showModal === 'function') {
+                dialogue.showModal();
+            } else {
+                dialogue.setAttribute('open', '');
+            }
+            if (btnAnnuler) { btnAnnuler.focus(); }
+        }
+
+        function fermerDialogue() {
+            if (typeof dialogue.close === 'function') {
+                dialogue.close();
+            } else {
+                dialogue.removeAttribute('open');
+            }
+        }
+
+        if (formDeclencheur) {
+            formDeclencheur.addEventListener('submit', ouvrirDialogue);
+        }
+        if (btnLaterale) {
+            btnLaterale.addEventListener('click', ouvrirDialogue);
+        }
+        if (btnAnnuler) {
+            btnAnnuler.addEventListener('click', fermerDialogue);
+        }
+        if (btnFermerCroix) {
+            btnFermerCroix.addEventListener('click', fermerDialogue);
+        }
+
+        /* Fermeture en cliquant sur l'arrière-plan */
+        dialogue.addEventListener('click', function (e) {
+            var rect = dialogue.getBoundingClientRect();
+            var enDehors = (
+                e.clientX < rect.left ||
+                e.clientX > rect.right ||
+                e.clientY < rect.top ||
+                e.clientY > rect.bottom
+            );
+            if (enDehors) {
+                fermerDialogue();
+            }
+        });
+
+        /* Évite les doubles soumissions lors de la validation */
+        if (formConfirme && btnConfirmer) {
+            formConfirme.addEventListener('submit', function () {
+                btnConfirmer.disabled = true;
+                btnConfirmer.style.opacity = '0.7';
+                btnConfirmer.style.cursor = 'wait';
+            });
+        }
     }
 })();
 </script>

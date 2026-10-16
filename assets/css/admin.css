@@ -50,7 +50,11 @@ body.admin {
 .admin-nav__titre {
     font-family: var(--police-titre); font-size: .68rem; font-weight: 600;
     letter-spacing: .13em; text-transform: uppercase;
-    color: rgba(255, 255, 255, .4); padding: 0 12px; margin-bottom: 8px;
+    /* Titre de groupe. Le blanc à 40 % ne donnait que 3,48:1 sur le dégradé
+       violet de la barre — mesuré par tests/audit_sombre.js sur les quinze
+       pages du back-office. À 58 % il monte à ~5,9:1, tout en restant en
+       retrait des libellés de liens (blanc 78 %). */
+    color: rgba(255, 255, 255, .58); padding: 0 12px; margin-bottom: 8px;
 }
 .admin-nav a {
     display: flex; align-items: center; gap: 11px;
@@ -70,7 +74,11 @@ body.admin {
 
 .admin-laterale__pied {
     padding: 16px 20px; border-top: 1px solid rgba(255, 255, 255, .1);
-    font-size: .8rem; color: rgba(255, 255, 255, .45);
+    /* Pied de barre : version et lien « Voir le site public ». Le lien porte
+       style="color:inherit" dans le gabarit (app/views/layouts/admin.php) :
+       corriger le pied corrige les deux. Blanc à 45 % = 4,0:1 avant, ~5,6:1
+       à 58 %. */
+    font-size: .8rem; color: rgba(255, 255, 255, .58);
 }
 
 .admin-principal {
@@ -526,3 +534,418 @@ body.admin {
 
 /* Panneau mis en avant : les codes de secours neufs */
 .panneau--accent { border-color: var(--violet-300); }
+
+/* ==========================================================================
+   Thème sombre du back-office
+   --------------------------------------------------------------------------
+   app.css inverse déjà les neutres (--gris-*) et les surfaces de verre
+   (--verre-*). Ce bloc corrige ce que app.css ne pouvait pas voir : les
+   couleurs écrites en dur dans admin.css, et les usages de jetons qui restent
+   volontairement sombres (--violet, --violet-700/900) alors qu'ils servent
+   ici de couleur de texte ou d'icône sur un fond devenu sombre.
+
+   Chargé après app.css, ce bloc l'emporte à spécificité égale.
+   ========================================================================== */
+
+/* Fond « aurore » du back-office : halos plus profonds pour tenir sur le noir */
+:root[data-theme="dark"] body.admin {
+    background-color: #0B0718;
+    background-image:
+        radial-gradient(44rem 28rem at 8% -6%, rgba(124, 58, 237, .32), transparent 62%),
+        radial-gradient(36rem 26rem at 92% 2%, rgba(167, 139, 250, .20), transparent 64%),
+        radial-gradient(40rem 28rem at 84% 98%, rgba(251, 191, 36, .10), transparent 66%);
+}
+
+/* En-tête collant : bordure et ombre recalibrées pour le fond sombre */
+:root[data-theme="dark"] .admin-entete {
+    border-bottom-color: var(--verre-bord);
+    box-shadow: var(--verre-reflet), 0 4px 18px rgba(0, 0, 0, .45);
+}
+:root[data-theme="dark"] .admin-entete__utilisateur { border-left-color: var(--gris-300); }
+
+/* --------------------------------------------------------------------------
+   Couleur de marque en texte ou en icône
+   --------------------------------------------------------------------------
+   Le violet profond (#4C1D95) et le violet nuit (#2E1065) sont lisibles sur
+   blanc, pas sur le fond sombre. On bascule sur le lilas clair, qui conserve
+   l'identité de marque en gardant le contraste.
+   -------------------------------------------------------------------------- */
+:root[data-theme="dark"] .panneau__titre svg,
+:root[data-theme="dark"] .carte-qr__code { color: var(--violet-300); }
+
+:root[data-theme="dark"] .onglets a { color: var(--gris-700); }
+:root[data-theme="dark"] .onglets a:hover { color: var(--violet-300); }
+:root[data-theme="dark"] .onglets a.actif {
+    color: var(--violet-300);
+    border-bottom-color: var(--violet-300);
+}
+
+/* --------------------------------------------------------------------------
+   Tableaux
+   --------------------------------------------------------------------------
+   L'en-tête de colonne avait un fond clair écrit en dur (rgba(249,247,252)),
+   qui restait une bande blanche en thème sombre.
+   -------------------------------------------------------------------------- */
+:root[data-theme="dark"] .tableau th {
+    background: rgba(34, 25, 64, .72);
+    color: var(--gris-700);
+    border-bottom-color: var(--gris-300);
+}
+:root[data-theme="dark"] .tableau td { border-bottom-color: var(--gris-200); }
+:root[data-theme="dark"] .tableau tbody tr:hover { background: rgba(124, 58, 237, .16); }
+
+/* --------------------------------------------------------------------------
+   Formulaires
+   --------------------------------------------------------------------------
+   .case:has(:checked) posait un pastel lilas clair (--lilas-100) qui reste
+   clair en thème sombre, surmonté d'un texte devenu clair : illisible. On
+   teinte le fond en violet translucide et on garde le texte clair.
+   -------------------------------------------------------------------------- */
+:root[data-theme="dark"] .case { border-color: var(--gris-300); }
+:root[data-theme="dark"] .case:has(input:checked) {
+    background: rgba(124, 58, 237, .30);
+    border-color: var(--violet-300);
+}
+:root[data-theme="dark"] .case small { color: var(--gris-700); }
+
+/* --------------------------------------------------------------------------
+   Encarts
+   --------------------------------------------------------------------------
+   L'encart standard utilisait un pastel violet clair avec un texte gris clair
+   en thème sombre : là encore, texte clair sur fond clair.
+   -------------------------------------------------------------------------- */
+:root[data-theme="dark"] .encart {
+    background: rgba(124, 58, 237, .16);
+    border-left-color: var(--violet-300);
+    color: var(--gris-700);
+}
+:root[data-theme="dark"] .encart strong { color: var(--charbon); }
+:root[data-theme="dark"] .encart--avertissement {
+    background: rgba(180, 83, 9, .20);
+    border-left-color: var(--or);
+    color: #FCD34D;
+}
+
+/* --------------------------------------------------------------------------
+   Vérification en deux étapes : clé partagée et codes de secours
+   --------------------------------------------------------------------------
+   Les deux blocs posaient un texte en --violet-900 (#2E1065) sur un fond
+   --gris-100 devenu sombre : noir sur noir.
+   -------------------------------------------------------------------------- */
+:root[data-theme="dark"] .cle-secret,
+:root[data-theme="dark"] .codes-secours li {
+    background: rgba(20, 15, 38, .72);
+    border-color: var(--gris-300);
+    color: var(--violet-300);
+}
+:root[data-theme="dark"] .recours > summary { color: var(--violet-300); }
+:root[data-theme="dark"] .recours { border-top-color: var(--gris-300); }
+:root[data-theme="dark"] .etapes { color: var(--gris-600); }
+
+/* Liseré lumineux des indicateurs : adouci pour ne pas éblouir sur fond noir */
+:root[data-theme="dark"] .indicateur::after {
+    background: linear-gradient(90deg, transparent, rgba(196, 181, 253, .50), transparent);
+}
+
+/* --------------------------------------------------------------------------
+   Repli sans flou d'arrière-plan, en thème sombre
+   --------------------------------------------------------------------------
+   Le repli défini plus haut rend les surfaces opaques — mais blanches. Sur un
+   navigateur sans backdrop-filter, le thème sombre redeviendrait clair. On
+   rétablit ici des surfaces sombres opaques.
+   -------------------------------------------------------------------------- */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root[data-theme="dark"] .admin-entete {
+        background: #16102E; border-bottom-color: var(--gris-300);
+    }
+    :root[data-theme="dark"] .panneau,
+    :root[data-theme="dark"] .indicateur,
+    :root[data-theme="dark"] .carte-qr { background: #1A1430; border-color: var(--gris-300); }
+    :root[data-theme="dark"] .saisie,
+    :root[data-theme="dark"] .liste,
+    :root[data-theme="dark"] .zone-texte { background: #140F26; }
+}
+
+/* ==========================================================================
+   Dialogue de confirmation de déconnexion
+   ========================================================================== */
+
+/* Bouton de déconnexion dans le pied de la barre latérale */
+.btn-deconnexion-laterale {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: var(--rayon-sm);
+    color: rgba(255, 255, 255, .82);
+    font-size: .82rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.btn-deconnexion-laterale:hover {
+    background: rgba(239, 68, 68, .2);
+    border-color: rgba(239, 68, 68, .4);
+    color: #FCA5A5;
+}
+.btn-deconnexion-laterale svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Modale de déconnexion native <dialog> */
+dialog.dialogue-deconnexion {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    border: none;
+    padding: 0;
+    border-radius: var(--rayon-lg);
+    background: transparent;
+    max-width: 460px;
+    width: min(460px, calc(100vw - 32px));
+    box-shadow: none;
+    overflow: visible;
+    z-index: 1000;
+}
+
+dialog.dialogue-deconnexion::backdrop {
+    background: rgba(18, 10, 36, .65);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    animation: apparitionVoileDeconnexion .2s ease-out;
+}
+
+.dialogue-deconnexion__carte {
+    background: var(--verre-fond-modal);
+    -webkit-backdrop-filter: var(--verre-flou-fort);
+    backdrop-filter: var(--verre-flou-fort);
+    border: 1px solid var(--verre-bord);
+    border-radius: var(--rayon-lg);
+    box-shadow: var(--verre-reflet), 0 24px 60px rgba(46, 16, 101, .28), 0 4px 16px rgba(46, 16, 101, .08);
+    padding: 26px 24px 22px;
+    position: relative;
+    animation: zoomDialogueDeconnexion .22s cubic-bezier(0.16, 1, 0.3, 1);
+    color: var(--charbon);
+}
+
+@keyframes apparitionVoileDeconnexion {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes zoomDialogueDeconnexion {
+    from { opacity: 0; transform: scale(.94) translateY(6px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.dialogue-deconnexion__entete {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.dialogue-deconnexion__badge-icone {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--rayon-sm);
+    background: linear-gradient(135deg, rgba(239, 68, 68, .12), rgba(220, 38, 38, .18));
+    border: 1px solid rgba(239, 68, 68, .28);
+    color: #DC2626;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, .15);
+}
+
+.dialogue-deconnexion__badge-icone svg {
+    width: 24px;
+    height: 24px;
+}
+
+.dialogue-deconnexion__fermer {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--gris-400);
+    padding: 6px;
+    border-radius: var(--rayon-xs);
+    display: grid;
+    place-items: center;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.dialogue-deconnexion__fermer:hover {
+    background: var(--gris-100);
+    color: var(--charbon);
+}
+
+.dialogue-deconnexion__fermer svg {
+    width: 18px;
+    height: 18px;
+}
+
+.dialogue-deconnexion__titre {
+    font-family: var(--police-titre);
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin: 0 0 6px;
+    color: var(--charbon);
+    letter-spacing: -0.01em;
+}
+
+.dialogue-deconnexion__message {
+    color: var(--gris-600);
+    font-size: .92rem;
+    line-height: 1.5;
+    margin: 0 0 16px;
+}
+
+.dialogue-deconnexion__utilisateur {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    background: var(--gris-50);
+    border: 1px solid var(--gris-200);
+    border-radius: var(--rayon-sm);
+    margin-bottom: 16px;
+}
+
+.dialogue-deconnexion__avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--violet) 0%, var(--violet-700) 100%);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-family: var(--police-titre);
+    font-weight: 700;
+    font-size: .92rem;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(76, 29, 149, .22);
+}
+
+.dialogue-deconnexion__utilisateur-texte {
+    min-width: 0;
+    flex: 1;
+}
+
+.dialogue-deconnexion__utilisateur-nom {
+    font-weight: 600;
+    font-size: .92rem;
+    display: block;
+    color: var(--charbon);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+}
+
+.dialogue-deconnexion__utilisateur-role {
+    font-size: .78rem;
+    color: var(--gris-500);
+    display: block;
+    line-height: 1.3;
+    margin-top: 2px;
+}
+
+.dialogue-deconnexion__point-separateur {
+    margin: 0 3px;
+    color: var(--gris-400);
+}
+
+.dialogue-deconnexion__rappel {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 9px 12px;
+    background: var(--violet-50);
+    border: 1px solid var(--violet-100);
+    border-radius: var(--rayon-sm);
+    color: var(--violet-900);
+    font-size: .79rem;
+    line-height: 1.45;
+    margin-bottom: 20px;
+}
+
+.dialogue-deconnexion__rappel svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--violet);
+}
+
+.dialogue-deconnexion__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.dialogue-deconnexion__actions .btn {
+    min-height: 42px;
+    padding: 10px 18px;
+    font-size: .9rem;
+    font-weight: 600;
+}
+
+/* Ajustements en thème sombre */
+:root[data-theme="dark"] .dialogue-deconnexion__carte {
+    background: rgba(22, 16, 46, .94);
+    border-color: rgba(255, 255, 255, .12);
+    box-shadow: var(--verre-reflet), 0 26px 70px rgba(0, 0, 0, .65);
+    color: #fff;
+}
+
+:root[data-theme="dark"] .dialogue-deconnexion__titre {
+    color: #fff;
+}
+
+:root[data-theme="dark"] .dialogue-deconnexion__message {
+    color: var(--gris-400);
+}
+
+:root[data-theme="dark"] .dialogue-deconnexion__fermer {
+    color: var(--gris-400);
+}
+
+:root[data-theme="dark"] .dialogue-deconnexion__fermer:hover {
+    background: rgba(255, 255, 255, .08);
+    color: #fff;
+}
+
+:root[data-theme="dark"] .dialogue-deconnexion__utilisateur {
+    background: rgba(36, 28, 61, .6);
+    border-color: rgba(255, 255, 255, .1);
+}
+
+:root[data-theme="dark"] .dialogue-deconnexion__utilisateur-nom {
+    color: #fff;
+}
+
+:root[data-theme="dark"] .dialogue-deconnexion__utilisateur-role {
+    color: var(--gris-400);
+}
+
+:root[data-theme="dark"] .dialogue-deconnexion__rappel {
+    background: rgba(124, 58, 237, .12);
+    border-color: rgba(167, 139, 250, .2);
+    color: var(--violet-300);
+}
+
+:root[data-theme="dark"] .dialogue-deconnexion__rappel svg {
+    color: var(--violet-300);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .dialogue-deconnexion__carte { background: #FFFFFF; }
+    :root[data-theme="dark"] .dialogue-deconnexion__carte { background: #16102E; }
+}

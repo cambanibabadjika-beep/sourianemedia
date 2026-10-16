@@ -87,6 +87,25 @@ final class Response
         return $this->entetes;
     }
 
+    /**
+     * Copie sans corps, pour répondre à une requête HEAD.
+     *
+     * La RFC 9110 impose qu’une ressource servie en GET le soit aussi en HEAD,
+     * mais sans corps. Conserver le statut et les en-têtes est tout l’intérêt :
+     * un client peut lire le type et la longueur sans rien télécharger.
+     */
+    public function sansCorps(): self
+    {
+        $entetes = $this->entetes;
+        unset($entetes['__fichier']);
+
+        if ($this->contenu !== '' && !isset($entetes['Content-Length'])) {
+            $entetes['Content-Length'] = (string) strlen($this->contenu);
+        }
+
+        return new self('', $this->statut, $entetes);
+    }
+
     /** Envoie la réponse au client. */
     public function envoyer(): void
     {
@@ -118,6 +137,15 @@ final class Response
                 }
                 header($nom . ': ' . $valeur);
             }
+        }
+
+        // Un fichier est envoyé en flux, il n’est jamais tenu en mémoire : son
+        // contenu n’est donc pas dans $contenu. Sans cette lecture, une réponse
+        // construite par Response::fichier() partait avec un corps vide.
+        if (isset($this->entetes['__fichier'])) {
+            readfile($this->entetes['__fichier']);
+
+            return;
         }
 
         echo $this->contenu;

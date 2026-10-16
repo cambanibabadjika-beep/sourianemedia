@@ -104,7 +104,12 @@ foreach (($galerie['videos'] ?? []) as $video) {
     <!-- 1. Offre --------------------------------------------------------------- -->
     <div class="panneau">
         <div class="panneau__entete">
-            <h2 class="panneau__titre"><?= Icone::svg('etincelle') ?> 1 · Offre en cours</h2>
+            <h2 class="panneau__titre">
+                <?= Icone::svg('etincelle') ?> 1 · Offre en cours
+                <?php if (offre_expiree($offre)): ?>
+                    <?= etiquette_etat('expire', 'Expirée') ?>
+                <?php endif; ?>
+            </h2>
             <label class="case" style="border:0;padding:0;gap:8px">
                 <input type="hidden" name="section_offre_present" value="1">
                 <input type="checkbox" name="section_offre_actif" value="1"<?= $active('offre') ? ' checked' : '' ?>>
@@ -131,6 +136,9 @@ foreach (($galerie['videos'] ?? []) as $video) {
                     <label class="champ__etiquette" for="offre_fin">Fin de validité</label>
                     <input class="saisie" type="date" id="offre_fin" name="offre_fin"
                            value="<?= e((string) ($offre['fin'] ?? '')) ?>">
+                    <?php if (offre_expiree($offre)): ?>
+                        <div class="champ__aide">Cette date est dépassée : l’offre n’apparaît plus sur la page « Découvrir ».</div>
+                    <?php endif; ?>
                 </div>
                 <div class="champ pleine-largeur">
                     <label class="champ__etiquette" for="offre_restrictions">Restrictions</label>

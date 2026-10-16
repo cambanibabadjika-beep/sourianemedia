@@ -177,6 +177,28 @@ function json_lire(?string $json, array $defaut = []): array
     return is_array($data) ? $data : $defaut;
 }
 
+/**
+ * Une offre dont la date de fin est dépassée.
+ *
+ * Les dates de validité d’une offre ne sont pas des colonnes : elles vivent
+ * dans le JSON de la section « offre » ($offre['debut'], $offre['fin']), au
+ * format Y-m-d produit par le champ `date` du formulaire. Le contrôle se fait
+ * donc ici, en PHP, et non dans la requête SQL.
+ *
+ * Une date absente ou illisible ne périme rien : seule une échéance
+ * franchement dépassée compte. Le début, lui, ne masque pas l’offre — la vue
+ * annonce « À partir du … », c’est-à-dire une offre que l’on peut déjà voir.
+ */
+function offre_expiree(?array $offre, ?string $aujourdhui = null): bool
+{
+    $fin = trim((string) ($offre['fin'] ?? ''));
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fin) !== 1) {
+        return false;
+    }
+
+    return $fin < ($aujourdhui ?? date('Y-m-d'));
+}
+
 /** Enregistre une opération d’administration dans le journal (EF-G05). */
 function journal_operation(
     ?int $utilisateurId,

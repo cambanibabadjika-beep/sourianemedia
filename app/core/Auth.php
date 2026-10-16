@@ -115,8 +115,10 @@ final class Auth
             'verrouille_jusqua' => null,
         ], 'id = :id', ['id' => (int) $utilisateur['id']]);
 
-        // Second facteur déjà en place : le code est attendu.
-        if (SecondFacteur::actif($utilisateur)) {
+        // Second facteur déjà en place : le code est attendu. La dérogation de
+        // développement (SECURITE_2FA_SANS_CODE) dispense de la saisie, sans
+        // effacer ce qui est rangé — voir app/config/config.php.
+        if (SecondFacteur::actif($utilisateur) && !SECURITE_2FA_SANS_CODE) {
             self::suspendre(self::CLE_ATTENTE, (int) $utilisateur['id']);
             journal_technique('securite', 'Mot de passe accepté, code à deux facteurs attendu', ['email' => $email]);
 

@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 $navigation = $navigation ?? [
     ['libelle' => 'Comment ça marche', 'url' => url('comment-ca-marche')],
+    ['libelle' => 'Découvrir les offres', 'url' => url('decouvrir')],
     ['libelle' => 'Pour les annonceurs', 'url' => url('annonceurs')],
     ['libelle' => 'Le parc', 'url' => url('le-parc')],
 ];

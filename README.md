@@ -112,6 +112,92 @@ production.**
 
 ---
 
+## 2 bis. Accès depuis un autre appareil (téléphone, tablette)
+
+Le poste sert l'application sur **toutes ses interfaces réseau** : un téléphone
+connecté au même Wi-Fi ouvre donc le site directement par l'adresse IP du poste,
+sans rien installer.
+
+Sous Windows, le lanceur fait tout :
+
+```bash
+demarrer-local.bat
+```
+
+Il démarre MySQL et Apache s'ils ne tournent pas déjà, **sonde le site jusqu'à
+obtenir une vraie réponse HTTP 200** (aucun délai fixe, qui déclarerait un
+démarrage à froid en échec), puis affiche les deux adresses :
+
+```
+Sur cet ordinateur : http://localhost/sourianemedia/
+Sur le telephone   : http://192.168.1.10/sourianemedia/
+```
+
+Aucune configuration n'est nécessaire : `APP_URL` est vide, donc l'application
+déduit son adresse de base de l'en-tête `Host` reçu. Les liens, les feuilles de
+style et les appels d'API s'adaptent automatiquement à l'adresse utilisée.
+
+### Ce qui a été vérifié sur le poste
+
+| Point | État relevé |
+|---|---|
+| Écoute d'Apache | `0.0.0.0:80` et `[::]:80` — toutes les interfaces, pas seulement localhost |
+| Accès par l'IP du LAN | `curl http://192.168.1.10/sourianemedia/` → **200** |
+| URL engendrées | absolues et sur la bonne IP (`http://192.168.1.10/…`), aucun `localhost` résiduel |
+| `httpd.conf` | `<Directory "C:/xampp/htdocs">` → `Require all granted`, aucun hôte virtuel restrictif |
+| Redirection HTTPS / en-tête HSTS | aucune |
+| Pare-feu Windows | entrant bloqué par défaut, **mais** la règle « Apache HTTP Server » (Autoriser, TCP+UDP, tous ports) est active |
+| Profil réseau du Wi-Fi | **Public** — précisément le profil couvert par cette règle |
+| Pare-feu ou antivirus tiers | aucun (Windows Defender uniquement) |
+
+Autrement dit : **rien, sur le poste, ne bloque le téléphone.** Si l'accès échoue,
+la cause est en amont — dans le réseau, ou sur le téléphone.
+
+### Isoler la cause en trois essais
+
+1. **Depuis le téléphone**, ouvrir `http://<ip>/` — la page d'accueil XAMPP, sans
+   le `/sourianemedia`.
+   - Elle s'affiche → le réseau passe, le problème est applicatif.
+   - Elle échoue aussi → c'est le réseau, pas l'application. Passer au point 2.
+2. **Vérifier que le téléphone est sur le même réseau** : Wi-Fi et non données
+   mobiles, même SSID que le poste, et **VPN désactivé** — un VPN actif détourne
+   tout le trafic et rend le réseau local injoignable.
+3. **Isolation des clients.** Beaucoup de box et de systèmes maillés interdisent
+   par défaut à deux appareils du même Wi-Fi de se parler : « isolation des
+   clients », « isolation sans fil », « AP isolation », ou un SSID invité. C'est
+   la cause la plus fréquente lorsque tout le reste est correct. La désactiver
+   dans l'interface de la box, ou brancher le poste en Ethernet.
+
+Pour distinguer 2 et 3 : depuis le téléphone, ouvrir l'interface d'administration
+de la box (`http://192.168.1.1`). Si elle répond mais pas le poste, l'isolation
+des clients est en cause ; si rien ne répond, le téléphone n'est pas sur ce réseau.
+
+### Si la règle du pare-feu ne couvre pas le profil actif
+
+La règle livrée est limitée au profil **Public**. Si le Wi-Fi du poste est
+requalifié en **Privé** — Windows le fait parfois après un redémarrage de la box —
+elle ne s'applique plus et tout accès entrant est refusé. Vérifier, puis élargir :
+
+```powershell
+Get-NetConnectionProfile | Select-Object InterfaceAlias, NetworkCategory
+Get-NetFirewallRule -Direction Inbound | Where-Object DisplayName -like '*Apache*' |
+    Select-Object DisplayName, Profile, Action
+Set-NetFirewallRule -DisplayName 'Apache HTTP Server' -Profile Any
+```
+
+**Limite importante — HTTPS.** En HTTP, sur une adresse qui n'est pas
+`localhost`, le navigateur considère la page comme non sécurisée : le service
+worker, l'installation PWA et **les notifications push** restent indisponibles.
+C'est une règle des navigateurs, pas un défaut de l'application. Pour tester les
+notifications depuis le téléphone, servir le site en HTTPS (tunnel `cloudflared`
+ou `ngrok`, ou certificat local) — voir la section 8.
+
+> Le lanceur `.bat`, les scripts `.sh` et `.ps1` sont bloqués par `.htaccess` :
+> ils ne sont pas téléchargeables depuis le réseau, car ils révèlent les chemins
+> locaux du poste.
+
+---
+
 ## 3. Arborescence
 
 ```
@@ -119,6 +205,7 @@ index.php                  point d'entrée unique
 service-worker.js          cache, mode hors ligne, réception des notifications
 manifest.webmanifest       métadonnées d'installation PWA
 .htaccess                  réécriture, durcissement, cache, compression
+demarrer-local.bat         lanceur Windows : Apache + MySQL, puis adresse réseau
 
 app/
   bootstrap.php            amorçage : autoload PSR-4, session, erreurs
@@ -151,17 +238,25 @@ app/lang/                  catalogues de traduction (fr, wo…)
 cron/
   generer_cles.php         génération des clés VAPID
   envoyer_notifications.php  traitement de la file d'envoi
+  sauvegarder_base.php     sauvegarde de la base + rotation (ligne de commande)
   preparer_2fa_demo.php    active le second facteur sur les comptes démo
 
 sql/                       structure (16 tables, 3 vues) + migration 2FA
 storage/                   journaux, limitations, téléversements (inscriptible)
+  sauvegardes/             dumps SQL datés (hors web : 403)
 tests/
   verifier_api.php         API JSON (CSRF, abonnements, limitation, 2FA)
   verifier_admin.php       back-office (rubriques, rôles, écritures, 2FA)
   verifier_cron.php        file d'envoi et plafond mensuel
+  verifier_limiteur.php    limiteur : échecs, fenêtre, réinitialisation
+  verifier_abonnement_plateforme.php  abonnement « portée plateforme »
+  verifier_demande.php     formulaire public de demande
+  verifier_offres.php      validité des offres sur /decouvrir
+  verifier_sauvegarde.php  dump complet, rotation, refus d'un dump tronqué
   verifier_contraste.php   contrastes WCAG de la charte
   verifier_totp.php        RFC 6238, base32, anti-rejeu, codes de secours
   verifier_animations.js   animations et rendu du bloc chiffres (navigateur)
+  audit_sombre.js          contraste réel des 20 pages en thème sombre
   generer_icones.js        régénère les icônes depuis le logo
   capturer_site.js         captures d'écran du site et du back-office
 ```
@@ -177,6 +272,7 @@ tests/
 | GET | `/comment-ca-marche` | explication du dispositif |
 | GET | `/annonceurs` | annuaire des annonceurs |
 | GET | `/le-parc` | parcs et panneaux |
+| GET | `/decouvrir` | offres en cours des annonceurs (hors offres expirées) |
 | GET | `/mentions-legales`, `/confidentialite`, `/accessibilite` | pages légales |
 | GET | `/{adresse}` | page publique d'un annonceur |
 | GET | `/api/sante` | sonde de disponibilité |
@@ -230,6 +326,57 @@ mêmes notifications.
 
 ---
 
+## 5 bis. Sauvegarde de la base
+
+`cron/sauvegarder_base.php` produit un dump SQL complet dans
+`storage/sauvegardes/`, puis ne conserve que les sept plus récents.
+
+```bash
+php cron/sauvegarder_base.php                # dump + rotation (7 conservés)
+php cron/sauvegarder_base.php --garder=30    # en conserver 30
+php cron/sauvegarder_base.php --aide         # options
+```
+
+À planifier chaque nuit à 3 h :
+
+```
+0 3 * * * /usr/bin/php /var/www/souriane/cron/sauvegarder_base.php --silencieux
+```
+
+Sous Windows, par le Planificateur de tâches :
+
+| Champ | Valeur |
+|---|---|
+| Programme | `C:\xampp\php\php.exe` |
+| Arguments | `C:\xampp\htdocs\sourianemedia\cron\sauvegarder_base.php --silencieux` |
+| Déclencheur | quotidien, 03:00 |
+
+Restauration — le dump contient `CREATE DATABASE` et `USE` :
+
+```bash
+mysql -u souriane -p < storage/sauvegardes/souriane-2026-10-16-171437.sql
+```
+
+**Ce que le script refuse.** `mysqldump` termine toujours par
+`-- Dump completed on …`. Un fichier dépourvu de ce marqueur, ou sans
+`CREATE TABLE`, ou pesant moins de 1 ko, est **supprimé** et le script sort en
+erreur. Sans ce contrôle, un disque plein laisserait un fichier tronqué portant
+le nom d'une sauvegarde valide — une fausse assurance, pire que pas de
+sauvegarde du tout.
+
+**Aucun repli en PHP.** Si `mysqldump` est introuvable, le script échoue
+franchement : un dump reconstruit à la main laisserait de côté les vues, les
+index et l'encodage, tout en portant le nom d'une sauvegarde. Le chemin du
+binaire est cherché parmi les emplacements usuels et peut être forcé par
+`MYSQLDUMP_CHEMIN` dans `.env`.
+
+**Réservé à la ligne de commande.** Un appel HTTP reçoit 403 : une sauvegarde
+déclenchable par le web permettrait de remplir le disque à volonté. Le dossier
+`storage/sauvegardes/` n'est pas servi non plus — éprouvé par
+`tests/verifier_sauvegarde.php`, qui y dépose un faux dump et exige un 403.
+
+---
+
 ## 6. Notifications : contraintes respectées
 
 - **Plafond de quatre notifications par mois et par annonceur** (ch. 5.5).
@@ -262,6 +409,12 @@ Les comptes `regie` et `agent` sont protégés par un second facteur TOTP
 - **Enrôlement forcé** : un compte `regie` ou `agent` sans 2FA actif est
   redirigé vers l'écran d'enrôlement dès la connexion. L'annonceur peut
   l'activer volontairement.
+- **Dérogation de développement** : `SECURITE_2FA_SANS_CODE=true` dispense de
+  saisir le code à la connexion. Elle n'efface rien — secrets et codes de
+  secours restent en base — et se rétablit en repassant le réglage à `false`.
+  Elle est **refusée si `APP_ENV=production`** (voir `app/config/config.php`).
+  À ne pas confondre avec `SECURITE_2FA_ROLES`, qui régit l'enrôlement *imposé* :
+  vider la liste n'exempte pas un compte *déjà* enrôlé de saisir son code.
 
 La migration `sql/2fa.sql` ajoute les cinq colonnes nécessaires à la table
 `utilisateurs`. Le script `cron/preparer_2fa_demo.php` active le 2FA sur les
@@ -270,19 +423,57 @@ permettre aux tests de lire le code attendu sans backdoor.
 
 ---
 
+## 6 ter. Validité des offres
+
+Les dates de validité d'une offre ne sont pas des colonnes SQL : elles vivent
+dans le JSON de la section `offre` (`debut`, `fin`), au format `Y-m-d`. Le
+contrôle se fait donc en PHP, après `json_lire()`, et non dans la requête.
+
+La page `/decouvrir` annonce « Jusqu’au … » sur chaque carte : elle doit donc
+respecter cette échéance. Une offre dont la `fin` est dépassée est **écartée**
+(`offre_expiree()`, `app/helpers.php`). Deux cas ne sont *pas* filtrés, par
+choix :
+
+- **sans date de fin** — l'offre n'a pas d'échéance, elle reste en cours ;
+- **dont le début est à venir** — la carte l'annonce « À partir du … », c'est
+  une offre que l'on peut déjà montrer.
+
+Le formulaire d'administration (`admin/page-form.php`) porte un badge
+« Expirée » et rappelle la conséquence dès que la date de fin est dépassée.
+
+`tests/verifier_offres.php` (22 vérifications) crée trois offres réelles —
+expirée, en cours, sans échéance — interroge la vraie page par HTTP, contrôle
+le badge côté admin, puis supprime ses données.
+
+---
+
 ## 7. Vérifications
 
-Quatre suites PHP et une suite navigateur couvrent le parcours complet. Elles
-nécessitent que le site soit servi et que la base de démonstration soit chargée.
+Onze suites couvrent le parcours complet — dix en PHP, une dans un vrai
+navigateur — plus un audit de contraste du thème sombre. Elles nécessitent que
+le site soit servi et que la base de démonstration soit chargée.
 
 ```bash
-php tests/verifier_api.php          # API JSON : CSRF, abonnements, limitation, 2FA
-php tests/verifier_admin.php        # back-office : rubriques, rôles, écritures, 2FA
-php tests/verifier_cron.php         # file d'envoi et plafond mensuel
-php tests/verifier_contraste.php    # contrastes WCAG de la charte
-php tests/verifier_totp.php         # RFC 6238, base32, anti-rejeu, codes de secours
+php tests/verifier_api.php                    # API JSON : CSRF, abonnements, limitation, 2FA
+php tests/verifier_admin.php                  # back-office : rubriques, rôles, écritures, 2FA
+php tests/verifier_cron.php                   # file d'envoi et plafond mensuel
+php tests/verifier_limiteur.php               # limiteur : échecs, fenêtre, réinitialisation
+php tests/verifier_abonnement_plateforme.php  # abonnement « portée plateforme »
+php tests/verifier_demande.php                # formulaire public de demande
+php tests/verifier_offres.php                 # validité des offres sur /decouvrir
+php tests/verifier_sauvegarde.php             # dump complet, rotation, refus d'un dump tronqué
+php tests/verifier_contraste.php              # contrastes WCAG de la charte
+php tests/verifier_totp.php                   # RFC 6238, base32, anti-rejeu, codes de secours
 
-node tests/verifier_animations.js   # animations, dans un vrai navigateur
+node tests/verifier_animations.js             # animations, dans un vrai navigateur
+node tests/audit_sombre.js                    # contraste réel des 20 pages en thème sombre
+```
+
+Avant la première exécution, préparer le second facteur des comptes de
+démonstration — sinon les suites ne peuvent pas franchir l'écran de code :
+
+```bash
+php cron/preparer_2fa_demo.php
 ```
 
 État attendu :
@@ -290,12 +481,36 @@ node tests/verifier_animations.js   # animations, dans un vrai navigateur
 | Suite | Vérifications |
 |---|---|
 | `verifier_api.php` | 62 |
-| `verifier_admin.php` | 186 |
+| `verifier_admin.php` | 155 (17 échecs attendus — voir la note) |
 | `verifier_cron.php` | 28 |
-| `verifier_contraste.php` | 28 |
+| `verifier_limiteur.php` | 11 |
+| `verifier_abonnement_plateforme.php` | 17 |
+| `verifier_demande.php` | 12 |
+| `verifier_offres.php` | 22 |
+| `verifier_sauvegarde.php` | 23 |
+| `verifier_contraste.php` | 54 |
 | `verifier_totp.php` | 33 |
 | `verifier_animations.js` | 31 |
-| **Total** | **368** |
+| **Total** | **448** |
+
+> **Second facteur en local.** Deux réglages allègent la politique du chapitre 8
+> sur cette installation, et chacun a une conséquence mesurable sur
+> `verifier_admin.php` :
+>
+> - `SECURITE_2FA_ROLES` est vidé dans `app/config/config.php` (décision du
+>   16/10) : l’enrôlement n’est imposé à personne. Le bloc d’enrôlement échoue
+>   alors — un compte sans second facteur va droit au back-office — soit **17
+>   échecs**. La suite les rapporte sans s’interrompre et affiche une note
+>   expliquant l’origine du réglage. Remettre `['regie', 'agent']` rétablit le
+>   parcours testé.
+> - `SECURITE_2FA_SANS_CODE` (dans `.env`) dispense de saisir le code à la
+>   connexion. Le bloc « écran de code » ne décrit alors plus le site : la suite
+>   **l’écarte** au lieu de le faire échouer, et vérifie à la place que le mot
+>   de passe seul ouvre bien la session. Aucune assertion n’est retirée — elles
+>   se réactivent en repassant le réglage à `false`.
+>
+> Ce ne sont pas des régressions de l’application : ne pas affaiblir ces
+> assertions pour faire passer la suite.
 
 Les suites PHP nettoient les données qu'elles ont créées et rendent la base dans
 son état d'origine. Utiliser de préférence l'interpréteur livré avec le serveur
@@ -309,6 +524,19 @@ taille du nombre), que la révélation et les compteurs se déclenchent, que les
 jauges de la page du parc sont proportionnées, puis il rejoue la page en
 **mouvement réduit** et en **JavaScript désactivé** pour confirmer que rien ne
 disparaît. Il produit aussi des captures dans le dossier de sortie.
+
+`audit_sombre.js` mérite la même mention. Il parcourt les vingt pages du site en
+thème sombre et mesure, pour chaque élément porteur de texte ou de pictogramme,
+le contraste **réel** — fond translucide composé couche par couche sur ses
+ancêtres — puis compare au seuil WCAG AA (4,5:1 pour le texte, 3:1 pour les
+éléments non textuels). Il traite quatre pièges qui, sinon, produisent des faux
+positifs : le texte en dégradé ; les icônes à `fill` explicite (le QR code est
+violet sur blanc, les épingles de la carte ont leur propre palette) ; les fonds
+en dégradé, pour lesquels `backgroundColor` vaut « transparent » et ne décrit
+plus rien ; et les panneaux de la carte Leaflet, posés sur des tuiles — donc sur
+des images — qui sont comptés à part et déclarés hors périmètre. État attendu :
+**0 élément sous le seuil**, 4 éléments hors périmètre. Un faux positif coûte
+plus cher qu'un silence : il fait « corriger » du code sain.
 
 Contrôle syntaxique de l'ensemble du code :
 
@@ -399,6 +627,38 @@ Le vert du bouton WhatsApp a été assombri (`#1A7F4B` au lieu du `#25D366`
 officiel) : le vert d'origine ne donne que 2:1 avec un texte blanc, très en
 dessous du seuil d'accessibilité. `tests/verifier_contraste.php` verrouille ce
 choix.
+
+### Thème sombre
+
+Le thème est piloté par un attribut `data-theme` posé sur `<html>` (voir
+`app/views/partials/theme-init.php`) : `?theme=sombre|clair` dans l'URL, sinon
+le choix mémorisé dans `localStorage`, sinon `prefers-color-scheme`. Un seul bloc
+de jetons est surchargé ; tout le design system suit, parce qu'il consomme ces
+jetons et rien d'autre.
+
+Quatre principes, tirés des corrections successives :
+
+1. **Aucune couleur claire figée sur une surface devenue sombre.** C'est la cause
+   de tous les défauts constatés : un `background: rgba(255, 255, 255, .72)`
+   écrit en dur laissait une pastille claire sous un libellé devenu clair.
+2. **Le texte secondaire se juge sur la surface la plus claire, pas sur le fond
+   noir.** Les surfaces de verre du back-office — en-tête, barre latérale — sont
+   des dégradés qui s'éclairent jusqu'à `rgb(43, 28, 83)`. C'est là que
+   `--gris-500` tombait à 4,2:1, et c'est cette contrainte qui a fixé sa valeur
+   (`#9A91BA`), et non le fond noir où il frôlait déjà le seuil.
+3. **Une couleur de marque ne se réemploie pas telle quelle.** `--violet`
+   (`#4C1D95`) sur fond sombre ne donne que 1,7:1 : les liens passent par le
+   jeton `--lien`, les accents de texte et d'icône par `--texte-accent`. Le logo,
+   lui, reste or en thème sombre — c'est une décision de marque, pas un oubli.
+4. **À spécificité égale, c'est la dernière feuille chargée qui gagne.**
+   `leaflet.css` est injecté après `app.css` : ses règles sur
+   `.leaflet-container` et `.leaflet-control-attribution` écrasaient les nôtres,
+   laissant un fond gris clair sous la carte et sous sa légende. Les correctifs
+   montent d'une classe plutôt que d'employer `!important`.
+
+`node tests/audit_sombre.js` parcourt les vingt pages en thème sombre et doit
+rapporter **0 élément sous le seuil** ; `tests/verifier_contraste.php` verrouille
+les paires de jetons, y compris celles des surfaces en dégradé.
 
 ### Composant « chiffres du parc »
 

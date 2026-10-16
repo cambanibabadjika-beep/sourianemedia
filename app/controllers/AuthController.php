@@ -72,10 +72,22 @@ final class AuthController
         $motDePasse = (string) $request->input('mot_de_passe', '');
         $retour     = (string) $request->input('retour', '');
 
-        // Cinq tentatives par quart d’heure et par adresse
-        $limite = RateLimiter::verifier('connexion', $request->ip(), 5, 900);
+        // Protection contre la force brute : seules les tentatives ÉCHOUÉES
+        // comptent, et une réussite remet le compteur à zéro. Une faute de
+        // frappe ne doit pas verrouiller un utilisateur légitime.
+        $limite = RateLimiter::bloque(
+            'connexion',
+            $request->ip(),
+            SECURITE_CONNEXION_MAX_ECHECS,
+            SECURITE_CONNEXION_FENETRE
+        );
         if (!$limite['autorise']) {
-            Flash::erreur('Trop de tentatives. Réessayez dans ' . ceil($limite['reessayer_dans'] / 60) . ' minute(s).');
+            $reste = (int) $limite['reessayer_dans'];
+            $delai = $reste >= 60
+                ? (string) (int) ceil($reste / 60) . ' minute(s)'
+                : $reste . ' seconde(s)';
+
+            Flash::erreur('Trop de tentatives. Réessayez dans ' . $delai . '.');
 
             return Response::redirect(url('admin/connexion'));
         }
@@ -89,10 +101,14 @@ final class AuthController
         $utilisateur = Auth::connecter($courriel, $motDePasse, $request);
 
         if ($utilisateur === null) {
+            RateLimiter::echec('connexion', $request->ip(), SECURITE_CONNEXION_FENETRE);
             Flash::erreur('Identifiants incorrects, ou compte temporairement verrouillé.');
 
             return Response::redirect(url('admin/connexion'));
         }
+
+        // Connexion réussie : le compteur repart de zéro.
+        RateLimiter::oublier('connexion', $request->ip());
 
         if ($this->retourValide($retour)) {
             Session::ecrire(self::RETOUR, $retour);
@@ -169,9 +185,14 @@ final class AuthController
             return Response::redirect(url('admin/connexion'));
         }
 
-        $limite = RateLimiter::verifier('second-facteur', $request->ip(), 10, 900);
+        $limite = RateLimiter::verifier('second-facteur', $request->ip(), SECURITE_CODE_MAX_ESSAIS, SECURITE_CODE_FENETRE);
         if (!$limite['autorise']) {
-            Flash::erreur('Trop de tentatives. Réessayez dans ' . ceil($limite['reessayer_dans'] / 60) . ' minute(s).');
+            $reste = (int) $limite['reessayer_dans'];
+            $delai = $reste >= 60
+                ? (string) (int) ceil($reste / 60) . ' minute(s)'
+                : $reste . ' seconde(s)';
+
+            Flash::erreur('Trop de tentatives. Réessayez dans ' . $delai . '.');
 
             return Response::redirect(url('admin/connexion/code'));
         }
@@ -269,9 +290,14 @@ final class AuthController
             return Response::redirect(url('admin/connexion'));
         }
 
-        $limite = RateLimiter::verifier('second-facteur', $request->ip(), 10, 900);
+        $limite = RateLimiter::verifier('second-facteur', $request->ip(), SECURITE_CODE_MAX_ESSAIS, SECURITE_CODE_FENETRE);
         if (!$limite['autorise']) {
-            Flash::erreur('Trop de tentatives. Réessayez dans ' . ceil($limite['reessayer_dans'] / 60) . ' minute(s).');
+            $reste = (int) $limite['reessayer_dans'];
+            $delai = $reste >= 60
+                ? (string) (int) ceil($reste / 60) . ' minute(s)'
+                : $reste . ' seconde(s)';
+
+            Flash::erreur('Trop de tentatives. Réessayez dans ' . $delai . '.');
 
             return Response::redirect(url('admin/connexion/enrolement'));
         }

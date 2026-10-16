@@ -104,7 +104,7 @@ $lignes = Evenement::INDICATEURS_MESURES;
                             <tr>
                                 <td>
                                     <span style="display:inline-flex;align-items:center;gap:9px">
-                                        <span style="color:var(--lilas-700)"><?= Icone::svg($ligne['icone'], '', 17) ?></span>
+                                        <span style="color:var(--texte-accent)"><?= Icone::svg($ligne['icone'], '', 17) ?></span>
                                         <?= e($ligne['libelle']) ?>
                                     </span>
                                 </td>

@@ -68,8 +68,19 @@ final class Router
 
     public function dispatch(Request $request): Response
     {
+        // La RFC 9110 impose qu’une ressource servie en GET le soit aussi en
+        // HEAD, sans corps. On achemine donc HEAD comme GET, et le corps est
+        // retiré en un seul point, à la sortie.
+        $estHead = $request->method === 'HEAD';
+        $reponse = $this->acheminer($request, $estHead ? 'GET' : $request->method);
+
+        return $estHead ? $reponse->sansCorps() : $reponse;
+    }
+
+    private function acheminer(Request $request, string $methode): Response
+    {
         foreach ($this->routes as $route) {
-            if ($route['method'] !== $request->method) {
+            if ($route['method'] !== $methode) {
                 continue;
             }
             if (!preg_match($route['regex'], $request->path, $m)) {

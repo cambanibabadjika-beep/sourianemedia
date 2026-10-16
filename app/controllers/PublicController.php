@@ -225,6 +225,74 @@ final class PublicController
     }
 
     // -----------------------------------------------------------------------
+    // Découvrir les offres (EF-E11)
+    // -----------------------------------------------------------------------
+
+    /**
+     * GET /decouvrir — les autres publicités.
+     *
+     * Une fois l’application installée, l’utilisateur ne suit pas seulement
+     * l’annonceur dont il a scanné le QR code. Cette page rassemble les offres
+     * en cours de tous les annonceurs actifs, pour qu’il puisse découvrir le
+     * reste du réseau — et, s’il le souhaite, s’abonner à toute la plateforme.
+     */
+    public function decouvrir(Request $request): Response
+    {
+        $pages = Page::publieesAvecOffre(60);
+
+        $offres = [];
+        foreach ($pages as $p) {
+            $offre   = json_lire($p['offre_contenu'] ?? null);
+            $galerie = json_lire($p['galerie_contenu'] ?? null);
+
+            // Une offre dont l’échéance est passée ne figure plus parmi les
+            // offres en cours : la carte annonce « Jusqu’au … », la page doit
+            // donc respecter cette date. Une offre sans date de fin, ou dont
+            // le début est à venir, reste affichée.
+            if (offre_expiree($offre)) {
+                continue;
+            }
+
+            // Première image de la galerie, si elle existe : elle illustre la carte.
+            $image = '';
+            foreach (($galerie['images'] ?? []) as $item) {
+                $src = is_array($item) ? ($item['url'] ?? $item['src'] ?? '') : $item;
+                if ($src !== '') {
+                    $image = (string) $src;
+                    break;
+                }
+            }
+
+            $texteOffre = trim((string) ($offre['texte'] ?? ''));
+            $bandeau    = trim((string) ($p['bandeau_offre'] ?? ''));
+
+            $offres[] = [
+                'adresse'  => (string) $p['adresse_courte'],
+                'nom'      => (string) $p['annonceur_nom'],
+                'ville'    => (string) ($p['ville'] ?? ''),
+                'logo'     => (string) ($p['logo'] ?? ''),
+                'image'    => $image,
+                'bandeau'  => $bandeau,
+                'resume'   => extrait($texteOffre !== '' ? $texteOffre : (string) ($p['description'] ?? ''), 130),
+                'debut'    => (string) ($offre['debut'] ?? ''),
+                'fin'      => (string) ($offre['fin'] ?? ''),
+            ];
+        }
+
+        $html = View::rendre('public/decouvrir', [
+            'titre'         => 'Découvrir les offres — ' . APP_NAME,
+            'description'   => 'Les offres en cours des annonceurs du réseau Souriane : promotions, nouveautés et bons plans, près de chez vous.',
+            'canonique'     => url('decouvrir'),
+            'titrePage'     => 'Découvrir les offres',
+            'surtitre'      => 'Les autres publicités',
+            'offres'        => $offres,
+            'configuration' => $this->configuration(),
+        ], 'public');
+
+        return Response::html($html)->avecCache(300);
+    }
+
+    // -----------------------------------------------------------------------
     // Pages de contenu
     // -----------------------------------------------------------------------
 
@@ -638,7 +706,8 @@ final class PublicController
     {
         $abonnes = $_SESSION['_abonnements'] ?? [];
 
-        return !empty($abonnes[$annonceurId]);
+        // Un abonnement « plateforme » couvre aussi cet annonceur.
+        return !empty($abonnes[$annonceurId]) || !empty($_SESSION['_abonnement_plateforme']);
     }
 
     /** Configuration transmise au JavaScript de la page. */

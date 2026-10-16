@@ -32,6 +32,7 @@ final class ApiController
     private const TYPES_CLIENT = [
         'clic_appel', 'clic_whatsapp', 'clic_itineraire',
         'clic_reseau', 'clic_rester_informe', 'installation',
+        'clic_decouvrir', 'clic_offre_decouverte',
     ];
 
     private const TAILLE_LOT_MAX = 25;
@@ -120,10 +121,12 @@ final class ApiController
         $p256dh      = trim((string) ($cles['p256dh'] ?? ''));
         $auth        = trim((string) ($cles['auth'] ?? ''));
         $frequence   = (string) ($corps['frequence'] ?? 'chaque_annonce');
+        $portee      = (string) ($corps['portee'] ?? 'annonceur');
 
-        if ($annonceurId <= 0) {
-            return Response::json(['erreur' => 'Annonceur manquant.'], 422);
+        if (!in_array($portee, ['annonceur', 'plateforme'], true)) {
+            $portee = 'annonceur';
         }
+
         if ($endpoint === '' || mb_strlen($endpoint) > 500 || !str_starts_with($endpoint, 'https://')) {
             return Response::json(['erreur' => 'Adresse d’abonnement invalide.'], 422);
         }
@@ -131,39 +134,63 @@ final class ApiController
             return Response::json(['erreur' => 'Clés de chiffrement manquantes.'], 422);
         }
 
-        // L’annonceur doit exister et être actif
-        $existe = (int) Database::instance()->selectValue(
-            "SELECT COUNT(*) FROM annonceurs WHERE id = :id AND statut = 'actif'",
-            ['id' => $annonceurId],
-            0
-        );
-        if ($existe === 0) {
-            return Response::json(['erreur' => 'Annonceur inconnu.'], 404);
+        /*
+         * Un abonnement « plateforme » ne dépend d’aucun annonceur : il est
+         * possible depuis n’importe quelle page, y compris la page de
+         * découverte, qui n’a pas d’annonceur de rattachement. Un abonnement
+         * « annonceur », lui, exige un annonceur existant et actif.
+         */
+        if ($portee === 'annonceur') {
+            if ($annonceurId <= 0) {
+                return Response::json(['erreur' => 'Annonceur manquant.'], 422);
+            }
+            $existe = (int) Database::instance()->selectValue(
+                "SELECT COUNT(*) FROM annonceurs WHERE id = :id AND statut = 'actif'",
+                ['id' => $annonceurId],
+                0
+            );
+            if ($existe === 0) {
+                return Response::json(['erreur' => 'Annonceur inconnu.'], 404);
+            }
         }
 
-        $abonneId = Abonne::enregistrer($annonceurId, $endpoint, $p256dh, $auth, $frequence);
+        $abonneId = Abonne::enregistrer(
+            $annonceurId > 0 ? $annonceurId : null,
+            $endpoint,
+            $p256dh,
+            $auth,
+            $frequence,
+            $portee
+        );
 
-        // Trace de l’abonnement côté mesure
+        // Trace de l’abonnement côté mesure. L’annonceur n’est renseigné que
+        // lorsqu’il est connu : la colonne reste facultative.
         Evenement::enregistrer([
             'type'             => 'abonnement',
             'code_court_id'    => $this->entierOuNull($corps['code_court_id'] ?? null),
             'page_id'          => $this->entierOuNull($corps['page_id'] ?? null),
-            'annonceur_id'     => $annonceurId,
+            'annonceur_id'     => $this->entierOuNull($corps['annonceur_id'] ?? null),
             'campagne_id'      => $this->entierOuNull($corps['campagne_id'] ?? null),
             'panneau_id'       => $this->entierOuNull($corps['panneau_id'] ?? null),
             'session_id'       => $this->session($corps['session_id'] ?? null),
             'empreinte_reseau' => empreinte_reseau($request->ip()),
             'agent'            => $request->agent(),
-            'meta'             => ['frequence' => $frequence],
+            'meta'             => ['frequence' => $frequence, 'portee' => $portee],
         ]);
 
         // Mémorise l’état pour l’affichage de la page
-        $_SESSION['_abonnements'][$annonceurId] = true;
+        if ($annonceurId > 0) {
+            $_SESSION['_abonnements'][$annonceurId] = true;
+        }
+        if ($portee === 'plateforme') {
+            $_SESSION['_abonnement_plateforme'] = true;
+        }
 
         return Response::json([
             'ok'        => true,
             'abonne'    => $abonneId,
             'frequence' => in_array($frequence, ['chaque_annonce', 'hebdomadaire'], true) ? $frequence : 'chaque_annonce',
+            'portee'    => $portee,
             'plafond'   => PLAFOND_NOTIFICATIONS_MOIS,
         ], 201);
     }

@@ -353,12 +353,14 @@ CREATE TABLE `evenements` (
 -- ----------------------------------------------------------------------------
 CREATE TABLE `abonnes` (
     `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `annonceur_id`  INT UNSIGNED  NOT NULL,
+    `annonceur_id`  INT UNSIGNED  NULL COMMENT 'NULL lorsque portee = plateforme',
     `endpoint`      VARCHAR(500)  NOT NULL,
     `endpoint_hash` CHAR(64)      NOT NULL COMMENT 'SHA-256 de l’endpoint (unicité)',
     `cle_p256dh`    VARCHAR(255)  NOT NULL,
     `cle_auth`      VARCHAR(255)  NOT NULL,
     `frequence`     ENUM('chaque_annonce','hebdomadaire') NOT NULL DEFAULT 'chaque_annonce',
+    `portee`        ENUM('annonceur','plateforme') NOT NULL DEFAULT 'annonceur'
+        COMMENT 'Étendue de l’abonnement : un annonceur, ou toute la plateforme',
     `statut`        ENUM('actif','inactif','desabonne') NOT NULL DEFAULT 'actif',
     `consentement_le` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `dernier_envoi` DATETIME      NULL,
@@ -367,6 +369,7 @@ CREATE TABLE `abonnes` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_abonnes_endpoint` (`endpoint_hash`),
     KEY `idx_abonnes_annonceur_statut` (`annonceur_id`,`statut`),
+    KEY `idx_abonnes_portee_statut` (`portee`,`statut`),
     CONSTRAINT `fk_abonnes_annonceur` FOREIGN KEY (`annonceur_id`)
         REFERENCES `annonceurs` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

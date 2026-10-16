@@ -952,8 +952,47 @@ verifier(
 $codeValide = code2fa('admin@souriane.sn');
 $codeFaux   = str_pad((string) (((int) $codeValide + 1) % 1000000), 6, '0', STR_PAD_LEFT);
 
+// Les pots de session de cette sous-section sont préparés hors du branchement :
+// le nettoyage de fin de section les cite, et ils doivent exister quelle que
+// soit la branche suivie.
+$jar2fa   = sys_get_temp_dir() . '/souriane-admin-2fa.txt';
+$jarRejeu = sys_get_temp_dir() . '/souriane-admin-rejeu.txt';
+$jarNeuf  = sys_get_temp_dir() . '/souriane-admin-neuf.txt';
+
+/*
+ * SECURITE_2FA_SANS_CODE dispense de saisir le code à la connexion (voir
+ * app/config/config.php). Quand elle est active, les vérifications qui
+ * suivent — mot de passe seul insuffisant, écran de code, anti-rejeu —
+ * décrivent une politique que le site n’applique plus. Les exécuter
+ * produirait une douzaine d’échecs qui ne signaleraient rien d’autre que le
+ * réglage. Elles sont donc écartées, et non retirées : repasser
+ * SECURITE_2FA_SANS_CODE à false les réactive telles quelles.
+ */
+if (SECURITE_2FA_SANS_CODE) {
+    echo "  [NOTE]   SECURITE_2FA_SANS_CODE est actif : le code à deux facteurs n'est\n";
+    echo "           pas exigé à la connexion. Les vérifications de l'écran de code\n";
+    echo "           sont écartées ; elles se réactiveront avec le réglage.\n";
+
+    @unlink($jar2fa);
+    $pcDerog  = appel('GET', $base . '/admin/connexion', null, $jar2fa);
+    $mdpDerog = appel('POST', $base . '/admin/connexion', [
+        '_csrf'        => jeton($pcDerog['corps']),
+        'email'        => 'admin@souriane.sn',
+        'mot_de_passe' => 'Souriane2026!',
+        'retour'       => '',
+    ], $jar2fa);
+    verifier(
+        'dérogation active : le mot de passe seul ouvre la session, sans code',
+        $mdpDerog['code'] === 302 && !str_contains($mdpDerog['entetes'], 'connexion/code'),
+        trim((string) strstr($mdpDerog['entetes'], 'Location:'))
+    );
+    verifier(
+        'dérogation active : le back-office est aussitôt accessible',
+        appel('GET', $base . '/admin', null, $jar2fa)['code'] === 200
+    );
+} else {
+
 // --- Le mot de passe seul n'ouvre plus de session -------------------------
-$jar2fa = sys_get_temp_dir() . '/souriane-admin-2fa.txt';
 @unlink($jar2fa);
 
 $pc2fa = appel('GET', $base . '/admin/connexion', null, $jar2fa);
@@ -1077,6 +1116,8 @@ verifier(
     'code ' . $sansJeton['code']
 );
 
+}   // fin du branchement SECURITE_2FA_SANS_CODE
+
 // --- Un compte client n'est pas soumis au second facteur ------------------
 $jarClient = sys_get_temp_dir() . '/souriane-admin-client-2fa.txt';
 @unlink($jarClient);
@@ -1160,9 +1201,24 @@ verifier(
     'deux chargements donnent deux clés'
 );
 
+// L'enrôlement est désactivable par configuration : SECURITE_2FA_ROLES vide
+// (voir app/config/config.php). L'écran n'est alors pas servi, et toute la
+// section qui suit échoue. C'est le comportement voulu — le test ne s'adapte
+// pas à la configuration, il la signale — mais encore faut-il que la suite
+// aille jusqu'au bout et dise pourquoi.
+if ($cleEnro === '' && defined('SECURITE_2FA_ROLES') && SECURITE_2FA_ROLES === []) {
+    echo "  [NOTE]   SECURITE_2FA_ROLES est vide : l'enrôlement du second facteur est\n";
+    echo "           désactivé sur cette installation. Les échecs de cette section sont\n";
+    echo "           la conséquence de ce réglage, non une régression du code.\n";
+}
+
+// Sans clé d'enrôlement, Totp::code() lève une exception : le test doit
+// rapporter un échec, pas s'interrompre au milieu de la suite. On lui passe
+// alors une chaîne vide — le code envoyé sera vide, l'assertion suivante
+// échouera, et l'échec restera visible et attribuable.
 $confirme = appel('POST', $base . '/admin/connexion/enrolement', [
     '_csrf' => jeton($pageEnro['corps']),
-    'code'  => \Souriane\Core\Totp::code($cleEnro),
+    'code'  => $cleEnro === '' ? '' : \Souriane\Core\Totp::code($cleEnro),
 ], $jarEnro);
 verifier(
     'un code calculé depuis la clé affichée active le second facteur',

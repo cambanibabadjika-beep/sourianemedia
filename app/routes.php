@@ -32,6 +32,7 @@ $cron   = new CronController();
 $routeur->get('/', [$public, 'accueil']);
 $routeur->get('/c/{code}', [$public, 'resoudreCode']);
 $routeur->get('/comment-ca-marche', [$public, 'commentCaMarche']);
+$routeur->get('/decouvrir', [$public, 'decouvrir']);
 $routeur->get('/annonceurs', [$public, 'annonceurs']);
 $routeur->get('/annonceurs/demande', [$public, 'demande']);
 $routeur->post('/annonceurs/demande', [$public, 'demandeEnregistrer']);

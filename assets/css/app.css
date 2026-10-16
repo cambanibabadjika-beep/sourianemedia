@@ -30,6 +30,12 @@
     --or-700:         #B45309;
     --or-100:         #FEF3C7;
 
+    /* Couleur des liens. Le thème sombre la surcharge (voir plus bas) : sur un
+       fond sombre, le violet profond ne donne que 1,7:1 et le lien devient
+       invisible. Une seule variable à surcharger, au lieu de rattraper chaque
+       règle « a » dispersée dans les blocs de thème. */
+    --lien:           var(--violet);
+
     /* Neutres — légèrement teintés de violet pour rester dans la charte */
     --blanc:          #FFFFFF;
     --charbon:        #1A1033;
@@ -146,7 +152,7 @@ h3 { font-size: clamp(1.1rem, 2.4vw, 1.3rem); }
 p { margin: 0 0 1em; }
 p:last-child { margin-bottom: 0; }
 
-a { color: var(--violet); text-decoration: none; }
+a { color: var(--lien); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 img, svg { max-width: 100%; height: auto; display: block; }
@@ -352,6 +358,22 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .btn--whatsapp { background: var(--whatsapp); color: #fff; }
 .btn--whatsapp:hover { background: var(--whatsapp-700); }
+
+.btn--danger {
+    background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 14px rgba(220, 38, 38, .28);
+}
+.btn--danger:hover {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(220, 38, 38, .38);
+    transform: translateY(-1px);
+}
+.btn--danger:active {
+    transform: translateY(0);
+}
 
 .btn--contour { background: transparent; border-color: var(--gris-300); color: var(--charbon); }
 .btn--contour:hover { border-color: var(--violet); color: var(--violet); background: var(--violet-50); }
@@ -2068,8 +2090,14 @@ html[data-anim="actif"] .reveler.reveler--visible {
     --charbon:        #ECE8F6;
     --gris-800:       #D9D2EC;
     --gris-700:       #B9AFD6;
-    --gris-600:       #9389B5;
-    --gris-500:       #7C729E;
+    /* 600 et 500 ne portent que du texte secondaire (légendes, aides de champ,
+       colonnes de tableau, codes). La contrainte réelle n'est pas le fond noir
+       mais les surfaces de verre du back-office — en-tête et barre latérale —
+       dont le dégradé s'éclaircit jusqu'à rgb(43, 28, 83) : là, 500 tombait à
+       4,2:1. Les valeurs ci-dessous passent partout (pire cas 5,1:1 pour 500 et
+       6,0:1 pour 600) tout en conservant l'écart de hiérarchie entre les deux. */
+    --gris-600:       #A79EC4;
+    --gris-500:       #9A91BA;
     --gris-400:       #5B5280;
     --gris-300:       #3A3158;
     --gris-200:       #2A2347;
@@ -2091,6 +2119,11 @@ html[data-anim="actif"] .reveler.reveler--visible {
     --ombre-1: 0 1px 2px rgba(0, 0, 0, .32), 0 1px 3px rgba(0, 0, 0, .42);
     --ombre-2: 0 4px 14px rgba(0, 0, 0, .36), 0 2px 6px rgba(0, 0, 0, .30);
     --ombre-3: 0 18px 40px rgba(0, 0, 0, .52), 0 6px 14px rgba(0, 0, 0, .36);
+
+    /* Liens : le lilas clair (#C4B5FD) donne ~9,4:1 sur le fond sombre, là où
+       le violet profond tombait à 1,7:1 — le lien « Retour au site public »
+       était donc strictement invisible sur la carte de connexion. */
+    --lien: var(--violet-300);
 }
 
 /* Aurore du corps : halos plus profonds pour tenir sur le fond sombre */
@@ -2138,25 +2171,25 @@ html[data-anim="actif"] .reveler.reveler--visible {
 :root[data-theme="dark"] .btn--accent { color: #2E1065; }
 :root[data-theme="dark"] .bandeau-offre__etiquette { color: #2E1065; }
 
-/* Carte de connexion : c’est une « carte papier » claire posée sur la page
-   sombre. On force son contenu (titres, libellés, champs) à rester sombre pour
-   que le contraste reste lisible. */
-:root[data-theme="dark"] .connexion-carte h1 { color: #1A1033; }
-:root[data-theme="dark"] .connexion-carte__intro { color: #554B73; }
-:root[data-theme="dark"] .connexion-carte .champ__etiquette { color: #1A1033; }
-:root[data-theme="dark"] .connexion-carte .champ__aide { color: #554B73; }
-:root[data-theme="dark"] .connexion-carte .saisie,
-:root[data-theme="dark"] .connexion-carte .zone-texte,
-:root[data-theme="dark"] .connexion-carte .liste {
-    background: #fff;
-    color: #1A1033;
-    border-color: rgba(76, 29, 149, .22);
+/* Carte de connexion en thème sombre.
+   C’est une surface sombre comme les autres : son contenu suit donc les jetons
+   du thème (texte clair sur fond sombre). Ne JAMAIS y réintroduire de couleur
+   claire figée pour le texte — le libellé deviendrait invisible sur le fond
+   sombre de la carte. Les champs reprennent le style global des champs sombres
+   (voir « Champs de saisie » plus haut) : plus de blocs blancs au milieu de la
+   carte. */
+:root[data-theme="dark"] .connexion-carte {
+    background: rgba(22, 16, 46, .88);
+    -webkit-backdrop-filter: var(--verre-flou-fort);
+    backdrop-filter: var(--verre-flou-fort);
+    border: 1px solid rgba(255, 255, 255, .14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15), 0 24px 60px rgba(0, 0, 0, .65);
+    color: var(--charbon);
 }
-:root[data-theme="dark"] .connexion-carte .saisie:focus,
-:root[data-theme="dark"] .connexion-carte .zone-texte:focus,
-:root[data-theme="dark"] .connexion-carte .liste:focus {
-    box-shadow: 0 0 0 3px rgba(124, 58, 237, .22);
-}
+:root[data-theme="dark"] .connexion-carte h1 { color: #ffffff; }
+:root[data-theme="dark"] .connexion-carte__intro { color: var(--gris-700); }
+:root[data-theme="dark"] .connexion-carte .champ__etiquette { color: var(--charbon); }
+:root[data-theme="dark"] .connexion-carte .champ__aide { color: var(--gris-600); }
 
 /* Retours utilisateur : fond teinté sombre + texte clair lisible */
 :root[data-theme="dark"] .message--succes   { background: rgba(21, 128, 61, .20);  border-color: rgba(34, 197, 94, .35);  color: #86EFAC; }
@@ -2777,6 +2810,13 @@ body {
     box-shadow: var(--verre-reflet), var(--verre-ombre);
     background: var(--gris-100);
 }
+/* leaflet.css pose `.leaflet-container { background: #ddd }` et se charge après
+   app.css : à spécificité égale — une classe contre une classe — c'est donc lui
+   qui gagne, et le cadre de la carte garde un fond gris clair en thème sombre.
+   Cela se voit au chargement des tuiles, sur les bords, et cela éclaircit en
+   plus toutes les surfaces translucides posées dessus (la légende Leaflet, par
+   exemple). Une classe de plus rétablit le jeton du thème. */
+.parc-carte.leaflet-container { background: var(--gris-100); }
 :root[data-theme="dark"] .parc-carte .leaflet-tile-pane {
     filter: invert(1) hue-rotate(180deg) brightness(.93) contrast(.9) saturate(.75);
 }
@@ -2880,3 +2920,163 @@ body {
     .parc-carte { height: 380px; }
 }
 
+
+/* ==========================================================================
+   20. Page « Découvrir les offres » (EF-E11)
+   --------------------------------------------------------------------------
+   Cartes d’offres : chaque annonceur du réseau y est représenté par une carte
+   cliquable qui mène à sa page publique. Le composant consomme les jetons de
+   verre, donc il suit le thème sombre ; les rares valeurs propres au sombre
+   sont regroupées en fin de section.
+   ========================================================================== */
+.offre-carte {
+    background: var(--verre-fond);
+    -webkit-backdrop-filter: var(--verre-flou);
+    backdrop-filter: var(--verre-flou);
+    border: 1px solid var(--verre-bord);
+    box-shadow: var(--verre-reflet), var(--verre-ombre);
+    border-radius: var(--rayon);
+    overflow: hidden;
+    transition: transform .25s ease, box-shadow .25s ease;
+}
+.offre-carte:hover { transform: translateY(-3px); box-shadow: var(--verre-reflet), var(--verre-ombre-fort); }
+
+.offre-carte__lien {
+    display: flex; flex-direction: column; height: 100%;
+    color: inherit; text-decoration: none;
+}
+.offre-carte__lien:hover { text-decoration: none; }
+
+.offre-carte__visuel {
+    position: relative; aspect-ratio: 16 / 9;
+    background: linear-gradient(135deg, var(--violet-100), var(--lilas-100));
+    display: grid; place-items: center; overflow: hidden;
+}
+.offre-carte__visuel img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.offre-carte__visuel-vide { color: var(--violet); opacity: .5; }
+.offre-carte__visuel-vide svg { width: 42px; height: 42px; }
+
+.offre-carte__etiquette {
+    position: absolute; left: 12px; top: 12px; max-width: calc(100% - 24px);
+    background: var(--or); color: #1A1033;
+    font-size: .74rem; font-weight: 600; padding: 5px 11px;
+    border-radius: var(--rayon-plein);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.offre-carte__corps { display: flex; flex-direction: column; gap: 7px; flex: 1; padding: 17px 18px 18px; }
+.offre-carte__nom { margin: 0; font-family: var(--police-titre); font-weight: 600; font-size: 1.06rem; color: var(--charbon); }
+.offre-carte__ville { display: inline-flex; align-items: center; gap: 6px; font-size: .83rem; color: var(--gris-600); }
+.offre-carte__ville svg { width: 15px; height: 15px; }
+.offre-carte__resume { margin: 0; flex: 1; font-size: .92rem; color: var(--gris-600); }
+.offre-carte__pied {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--gris-200);
+}
+.offre-carte__validite { font-size: .78rem; color: var(--gris-500); }
+.offre-carte__action {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .84rem; font-weight: 600; color: var(--lilas-700);
+}
+.offre-carte__action svg { width: 15px; height: 15px; }
+
+/* Thème sombre */
+:root[data-theme="dark"] .offre-carte__visuel {
+    background: linear-gradient(135deg, rgba(76, 29, 149, .44), rgba(124, 58, 237, .30));
+}
+:root[data-theme="dark"] .offre-carte__visuel-vide { color: var(--violet-300); opacity: .85; }
+:root[data-theme="dark"] .offre-carte__pied { border-top-color: var(--gris-300); }
+:root[data-theme="dark"] .offre-carte__validite { color: var(--gris-600); }
+:root[data-theme="dark"] .offre-carte__action { color: var(--violet-300); }
+
+/* --------------------------------------------------------------------------
+   Correctif de thème sombre — option de fréquence sélectionnée
+   --------------------------------------------------------------------------
+   .frequence__option:has(:checked) posait un pastel lilas clair, qui reste
+   clair en thème sombre alors que le texte devient clair : illisible. Même
+   correctif que pour le back-office (.case).
+   -------------------------------------------------------------------------- */
+:root[data-theme="dark"] .frequence__option { border-color: var(--gris-300); }
+:root[data-theme="dark"] .frequence__option:has(input:checked) {
+    background: rgba(124, 58, 237, .30);
+    border-color: var(--violet-300);
+}
+:root[data-theme="dark"] .frequence__option small { color: var(--gris-600); }
+
+/* ==========================================================================
+   21. Cohérence du thème sombre — correctifs consolidés
+   --------------------------------------------------------------------------
+   L'audit automatique (tests/audit_sombre.js) parcourt les vingt pages du site
+   en thème sombre et mesure, pour chaque élément porteur de texte ou de
+   pictogramme, le contraste réel : fond translucide composé couche par couche
+   sur ses ancêtres, puis seuil WCAG AA (4,5:1 pour le texte, 3:1 pour les
+   éléments non textuels).
+
+   Les 101 éléments qu'il signalait se ramènent à six causes racines. Elles sont
+   traitées ici, une fois chacune, plutôt que page par page. Deux d'entre elles
+   l'ont déjà été plus haut dans ce fichier et ne sont rappelées que pour
+   mémoire :
+
+     - les liens (« Retour au site public » sur la carte de connexion) :
+       jeton --lien, défini en clair et surchargé en sombre ;
+     - le texte secondaire : échelle de gris sombre rehaussée dans le bloc de
+       jetons (--gris-500 et --gris-600).
+
+   Chaque règle ci-dessous indique la mesure relevée avant correction.
+   ========================================================================== */
+
+/* --- 1. Surtitre de section : le violet moyen s'éteignait sur le fond sombre
+   --lilas-700 (#7C3AED) sur #0B0718 ne donnait que 3,48:1. On bascule sur le
+   lilas clair, déjà employé pour la marque en thème sombre (9,4:1).
+   Relevé sur : accueil, /decouvrir, /le-parc, /comment-ca-marche. */
+:root[data-theme="dark"] .entete-section__surtitre { color: var(--violet-300); }
+
+/* --- 2. Pastilles de filtre : fond blanc figé, libellé clair par-dessus -----
+   .filtre pose un fond rgba(255, 255, 255, .72) écrit en dur. En thème sombre
+   la pastille reste donc claire, alors que son libellé suit --gris-700 (clair
+   lui aussi) : 4,2:1. On rend le fond translucide sombre, comme les autres
+   surfaces de verre du site.
+   Relevé sur : /admin/demandes. */
+:root[data-theme="dark"] .filtre {
+    background: var(--verre-fond-fort);
+    border-color: var(--verre-bord);
+    color: var(--charbon);
+}
+:root[data-theme="dark"] .filtre:hover {
+    border-color: var(--violet-300);
+    color: var(--violet-300);
+}
+:root[data-theme="dark"] .filtre__compte {
+    background: rgba(255, 255, 255, .14);
+    color: var(--charbon);
+}
+
+/* La pastille de filtre active n'avait AUCUN style : .filtre.actif n'était
+   défini nulle part — seul [aria-pressed="true"] l'était, et le back-office
+   emploie la classe (app/views/admin/demandes.php). Le filtre courant était
+   donc indiscernable du filtre inactif, en clair comme en sombre. */
+.filtre.actif {
+    background: var(--violet);
+    border-color: var(--violet);
+    color: #fff;
+}
+.filtre.actif .filtre__compte { background: rgba(255, 255, 255, .22); color: #fff; }
+:root[data-theme="dark"] .filtre.actif {
+    background: var(--violet);
+    border-color: var(--violet-300);
+    color: #fff;
+}
+
+/* --- 3. Carte du parc : la légende Leaflet restait sur fond blanc ----------
+   leaflet.css est injecté APRÈS app.css (PublicController::entetesExtra). Sa
+   règle « .leaflet-container .leaflet-control-attribution » a exactement la
+   même spécificité que la nôtre — deux classes. Or à spécificité égale, c'est
+   la dernière feuille chargée qui gagne : Leaflet écrasait donc notre fond
+   sombre, laissant un bandeau blanc surmonté d'un lien lilas clair (1,7:1).
+   On monte à trois classes au lieu d'employer !important, pour que l'ordre de
+   chargement cesse d'être décisif.
+   Relevé sur : /le-parc. */
+.parc-carte.leaflet-container .leaflet-control-attribution {
+    background: var(--verre-fond-fort);
+    color: var(--gris-600);
+}

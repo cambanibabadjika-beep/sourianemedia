@@ -10,6 +10,20 @@ storage/logs/*
 storage/uploads/*
 !storage/uploads/.gitignore
 
+# Sauvegardes de la base (cron/sauvegarder_base.php) — jamais publiées
+storage/sauvegardes/
+storage/sauvegarde.lock
+
+# Sorties de l'audit de thème sombre (tests/audit_sombre.js)
+audit-sombre.json
+storage/audit-*.json
+storage/audit-*.log
+
+# Captures et relevés de diagnostic (tests/sonde_*.js)
+*-sombre.png
+badge-*.png
+storage/net*.txt
+
 # Scripts de débogage locaux
 repro_*.php
 

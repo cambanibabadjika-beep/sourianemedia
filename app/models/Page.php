@@ -62,6 +62,35 @@ final class Page
         );
     }
 
+    /**
+     * Pages publiques à découvrir (EF-E11) : annonceurs actifs dont la page est
+     * publiée, avec la section « offre » et la section « galerie ».
+     *
+     * Les sous-requêtes évitent la duplication de lignes qu’engendrerait une
+     * jointure : une page peut porter plusieurs sections, et le résultat doit
+     * rester une ligne par page.
+     *
+     * @return array<int, array>
+     */
+    public static function publieesAvecOffre(int $limite = 60): array
+    {
+        return Database::instance()->select(
+            "SELECT p.id, p.adresse_courte, p.titre, p.bandeau_offre, p.maj_le,
+                    a.id AS annonceur_id, a.nom AS annonceur_nom, a.ville, a.logo, a.description,
+                    (SELECT s.contenu FROM sections_page s
+                      WHERE s.page_id = p.id AND s.type = 'offre' AND s.actif = 1
+                      LIMIT 1) AS offre_contenu,
+                    (SELECT s.contenu FROM sections_page s
+                      WHERE s.page_id = p.id AND s.type = 'galerie' AND s.actif = 1
+                      LIMIT 1) AS galerie_contenu
+             FROM pages p
+             JOIN annonceurs a ON a.id = p.annonceur_id
+             WHERE p.statut = 'publiee' AND a.statut = 'actif'
+             ORDER BY p.maj_le DESC, a.nom ASC
+             LIMIT " . max(1, min(200, $limite))
+        );
+    }
+
     /** Sections actives d’une page, dans l’ordre imposé. */
     public static function sections(int $pageId): array
     {

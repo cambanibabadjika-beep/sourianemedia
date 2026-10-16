@@ -263,17 +263,29 @@ $connexion = appel('POST', $base . '/admin/connexion', [
 
 /*
  * Second facteur (ch. 8). Le compte de démonstration en est protégé : le mot
- * de passe seul n'ouvre plus la session. On interroge l'écran de code plutôt
- * que l'en-tête de redirection — l'utilitaire d'appel de cette suite ne
+ * de passe seul n’ouvre plus la session. On interroge l’écran de code plutôt
+ * que l’en-tête de redirection — l’utilitaire d’appel de cette suite ne
  * remonte pas les en-têtes, et un 200 sur cet écran signifie exactement
  * « un code est attendu ».
+ *
+ * SECURITE_2FA_SANS_CODE dispense de saisir le code (voir
+ * app/config/config.php) : le contrôle suit alors le comportement configuré.
  */
 $etape2fa = appel('GET', $base . '/admin/connexion/code', null, null, $jarStats);
-verifier(
-    'le second facteur est demandé après le mot de passe (ch. 8)',
-    $etape2fa['code'] === 200,
-    'code ' . $etape2fa['code']
-);
+
+if (SECURITE_2FA_SANS_CODE) {
+    verifier(
+        'dérogation active : le mot de passe ouvre la session sans code (ch. 8)',
+        $connexion['code'] === 302,
+        'code ' . $connexion['code']
+    );
+} else {
+    verifier(
+        'le second facteur est demandé après le mot de passe (ch. 8)',
+        $etape2fa['code'] === 200,
+        'code ' . $etape2fa['code']
+    );
+}
 
 if ($etape2fa['code'] === 200) {
     preg_match('/name="_csrf" value="([^"]+)"/', (string) $etape2fa['corps'], $m2fa);

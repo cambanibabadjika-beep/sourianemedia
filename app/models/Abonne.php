@@ -15,14 +15,19 @@ final class Abonne
     /**
      * Enregistre ou réactive un abonnement.
      *
+     * @param int|null $annonceurId Annonceur suivi, ou null si la portée couvre
+     *                             toute la plateforme
+     * @param string   $portee      'annonceur' (défaut) ou 'plateforme'
+     *
      * @return int Identifiant de l’abonné
      */
     public static function enregistrer(
-        int $annonceurId,
+        ?int $annonceurId,
         string $endpoint,
         string $cleP256dh,
         string $cleAuth,
-        string $frequence = 'chaque_annonce'
+        string $frequence = 'chaque_annonce',
+        string $portee = 'annonceur'
     ): int {
         $db = Db::instance();
         $hash = hash('sha256', $endpoint);
@@ -30,12 +35,20 @@ final class Abonne
         if (!in_array($frequence, ['chaque_annonce', 'hebdomadaire'], true)) {
             $frequence = 'chaque_annonce';
         }
+        if (!in_array($portee, ['annonceur', 'plateforme'], true)) {
+            $portee = 'annonceur';
+        }
+
+        // Un abonnement « plateforme » n’est rattaché à aucun annonceur : la
+        // colonne accepte NULL, la clé étrangère reste donc valable.
+        $annonceurStocke = $portee === 'plateforme' ? null : $annonceurId;
 
         $existant = $db->selectOne('SELECT * FROM abonnes WHERE endpoint_hash = :h', ['h' => $hash]);
 
         if ($existant !== null) {
             $db->update('abonnes', [
-                'annonceur_id' => $annonceurId,
+                'annonceur_id' => $annonceurStocke,
+                'portee'       => $portee,
                 'cle_p256dh'   => $cleP256dh,
                 'cle_auth'     => $cleAuth,
                 'frequence'    => $frequence,
@@ -46,7 +59,8 @@ final class Abonne
         }
 
         return $db->insert('abonnes', [
-            'annonceur_id'    => $annonceurId,
+            'annonceur_id'    => $annonceurStocke,
+            'portee'          => $portee,
             'endpoint'        => $endpoint,
             'endpoint_hash'   => $hash,
             'cle_p256dh'      => $cleP256dh,
@@ -79,10 +93,18 @@ final class Abonne
         Db::instance()->delete('abonnes', 'id = :id', ['id' => $id]);
     }
 
-    /** Abonnés actifs d’un annonceur. */
+    /**
+     * Abonnés à servir pour un envoi donné.
+     *
+     * Un abonné « plateforme » reçoit les offres de tous les annonceurs : il
+     * est donc inclus quel que soit l’annonceur concerné. Un abonné
+     * « annonceur » ne reçoit que celles de son annonceur.
+     */
     public static function actifs(int $annonceurId, string $frequence = 'chaque_annonce'): array
     {
-        $sql = "SELECT * FROM abonnes WHERE annonceur_id = :id AND statut = 'actif'";
+        $sql = "SELECT * FROM abonnes
+                WHERE statut = 'actif'
+                  AND (annonceur_id = :id OR portee = 'plateforme')";
         $params = ['id' => $annonceurId];
 
         if ($frequence === 'chaque_annonce') {
@@ -90,6 +112,16 @@ final class Abonne
         }
 
         return Db::instance()->select($sql, $params);
+    }
+
+    /** Nombre d’abonnés couvrant toute la plateforme. */
+    public static function compterPlateforme(string $statut = 'actif'): int
+    {
+        return (int) Db::instance()->selectValue(
+            "SELECT COUNT(*) FROM abonnes WHERE portee = 'plateforme' AND statut = :s",
+            ['s' => $statut],
+            0
+        );
     }
 
     public static function tous(array $filtres = []): array

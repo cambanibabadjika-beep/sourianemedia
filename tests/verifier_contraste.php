@@ -132,6 +132,101 @@ $paires = [
     ['Blanc sur WhatsApp (survol)',            '#FFFFFF', '#14663C', 4.5],
 ];
 
+/*
+ * Thème sombre — back-office et page « Découvrir les offres ».
+ *
+ * Les surfaces sombres sont translucides : le contraste réel dépend de ce qu'il
+ * y a derrière. On compose donc sur le halo le PLUS CLAIR du fond « aurore »,
+ * qui est le cas le plus défavorable pour du texte clair — un fond plus clair
+ * rapproche le texte de la couleur de son fond, donc abaisse le ratio.
+ *
+ * Ces paires verrouillent le correctif de thème sombre : avant lui, plusieurs
+ * surfaces posaient un texte clair sur un pastel resté clair (case cochée,
+ * encart, clé partagée), et la couleur de marque --violet servait de couleur de
+ * texte sur un fond devenu sombre.
+ */
+$haloSombre    = composer('#0B0718', '#7C3AED', 0.48);       // halo le plus vif du fond
+$panneauSombre = composer($haloSombre, '#160F2E', 0.58);     // --verre-fond sombre, stop le plus transparent
+$enteteTableau = composer($panneauSombre, '#221940', 0.72);  // .tableau th
+$champSombre   = composer($panneauSombre, '#140F26', 0.72);  // .cle-secret, .codes-secours li
+$optionCochee  = composer($panneauSombre, '#7C3AED', 0.30);  // .case / .frequence__option cochée
+$encartSombre  = composer($panneauSombre, '#7C3AED', 0.16);  // .encart
+$encartAvert   = composer($panneauSombre, '#B45309', 0.20);  // .encart--avertissement
+$ligneSurvolee = composer($panneauSombre, '#7C3AED', 0.16);  // .tableau tbody tr:hover
+
+$pairesSombre = [
+    // Back-office
+    ['Admin sombre — icône de titre de panneau', '#C4B5FD', $panneauSombre, 4.5],
+    ['Admin sombre — en-tête de tableau',        '#B9AFD6', $enteteTableau, 4.5],
+    ['Admin sombre — onglet actif',              '#C4B5FD', $haloSombre,   4.5],
+    ['Admin sombre — onglet inactif',            '#B9AFD6', $haloSombre,   4.5],
+    ['Admin sombre — texte sur case cochée',     '#ECE8F6', $optionCochee, 4.5],
+    ['Admin sombre — texte d’encart',            '#B9AFD6', $encartSombre, 4.5],
+    ['Admin sombre — encart d’avertissement',    '#FCD34D', $encartAvert,  4.5],
+    ['Admin sombre — clé partagée',              '#C4B5FD', $champSombre,  4.5],
+    ['Admin sombre — ligne de tableau survolée', '#ECE8F6', $ligneSurvolee, 4.5],
+
+    // Page « Découvrir les offres »
+    ['Découvrir — nom d’annonceur',              '#ECE8F6', $panneauSombre, 4.5],
+    ['Découvrir — résumé',                       '#A79EC4', $panneauSombre, 4.5],
+    ['Découvrir — validité',                     '#A79EC4', $panneauSombre, 4.5],
+    ['Découvrir — appel à l’action',             '#C4B5FD', $panneauSombre, 4.5],
+
+    // Feuille « Rester informé » du site public
+    ['Feuille sombre — option cochée',           '#ECE8F6', $optionCochee, 4.5],
+];
+
+/*
+ * Écran de connexion du back-office.
+ *
+ * La carte (88 % opaque) est posée sur le dégradé violet de la page, lui-même
+ * éclairé par son halo : on compose donc sur le halo le plus clair, cas le plus
+ * défavorable. Ces paires verrouillent une régression observée — des couleurs
+ * claires figées (#1A1033, #554B73) laissées sur la carte devenue sombre
+ * rendaient les libellés de champ invisibles.
+ */
+$haloConnexion  = composer('#2E1065', '#A78BFA', 0.45);       // halo violet du fond de page
+$carteConnexion = composer($haloConnexion, '#160F2E', 0.88);  // .connexion-carte (thème sombre)
+$champConnexion = composer($carteConnexion, '#140F26', 0.72); // .saisie posée sur la carte
+
+$pairesConnexion = [
+    ['Connexion sombre — titre',                 '#FFFFFF', $carteConnexion, 4.5],
+    ['Connexion sombre — libellé de champ',      '#ECE8F6', $carteConnexion, 4.5],
+    ['Connexion sombre — texte d’introduction',  '#B9AFD6', $carteConnexion, 4.5],
+    ['Connexion sombre — aide de champ',         '#A79EC4', $carteConnexion, 4.5],
+    ['Connexion sombre — saisie',                '#ECE8F6', $champConnexion, 4.5],
+    // Jeton --lien en thème sombre : c'est le « ← Retour au site public » du
+    // pied de carte. Il héritait de --violet (#4C1D95), soit 1,7:1 — invisible.
+    ['Connexion sombre — lien de retour',        '#C4B5FD', $carteConnexion, 4.5],
+];
+
+$paires = array_merge($paires, $pairesConnexion);
+
+$paires = array_merge($paires, $pairesSombre);
+
+/*
+ * Surfaces de verre du back-office — en-tête collant et barre latérale.
+ *
+ * Leur fond est un dégradé (--verre-fond-fort, et le dégradé propre à la barre
+ * latérale). C'est l'arrêt le plus opaque qui définit la matière de la surface,
+ * donc le cas le plus clair — le plus défavorable pour du texte clair. Ces
+ * paires verrouillent la contrainte qui a fixé --gris-500 en thème sombre : sur
+ * le fond noir seul, #7C729E frôlait le seuil (4,49:1) ; sur ces surfaces, il
+ * tombait franchement dessous (4,2:1).
+ */
+$enteteSombre   = composer('#0B0718', '#2E1E58', 0.92);  // --verre-fond-fort, arrêt le plus opaque
+$lateraleSombre = composer('#0B0718', '#2E1065', 0.94);  // dégradé de .admin-laterale
+
+$pairesSurfaces = [
+    ['Admin sombre — titre de groupe (barre latérale)', '#9A91BA', $lateraleSombre, 4.5],
+    ['Admin sombre — pied de barre latérale',           '#9A91BA', $lateraleSombre, 4.5],
+    ['Admin sombre — texte secondaire sur en-tête',     '#9A91BA', $enteteSombre,   4.5],
+    ['Admin sombre — colonne secondaire de tableau',    '#9A91BA', $enteteTableau,  4.5],
+    ['Admin sombre — pictogramme accentué',             '#C4B5FD', $panneauSombre,  3.0],
+];
+
+$paires = array_merge($paires, $pairesSurfaces);
+
 // Le témoin négatif est le seul cas dont on ATTEND l'échec : il ne doit pas
 // être compté comme une régression de la charte.
 $attenduEnEchec = '[témoin] Nombre sur verre trop clair';

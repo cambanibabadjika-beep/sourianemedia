@@ -13,7 +13,7 @@
    changement de version les visiteurs déjà venus garderaient indéfiniment
    l’ancienne feuille de style. Le passage en v2 correspond à l’ajout des
    animations de la vitrine et du composant « chiffres du parc ». */
-var VERSION = 'souriane-v10';
+var VERSION = 'souriane-v13';
 var CACHE_COQUILLE = VERSION + '-coquille';
 var CACHE_RESSOURCES = VERSION + '-ressources';
 

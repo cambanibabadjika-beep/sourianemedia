@@ -12,9 +12,13 @@
  */
 
 const { chromium } = require('playwright');
+const os = require('os');
 
 const BASE   = 'http://localhost/sourianemedia';
-const SORTIE = process.argv[2] || 'C:/Users/khali/AppData/Local/Temp';
+// Le dossier temporaire du système, jamais un chemin écrit en dur : un
+// « C:/Users/<autre-machine>/… » fait échouer la capture sur toute autre
+// machine que celle où le script a été écrit.
+const SORTIE = process.argv[2] || os.tmpdir();
 
 let reussis = 0;
 let echecs  = 0;

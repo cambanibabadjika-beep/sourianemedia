@@ -38,7 +38,10 @@
 </IfModule>
 
 # --- Interdire les fichiers sensibles ---------------------------------------
-<FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|.*\.sql|.*\.log|.*\.md)$">
+# Les scripts d’exploitation (.bat, .sh, .ps1) révèlent les chemins locaux et
+# l’organisation du poste : ils ne doivent jamais être téléchargeables, même
+# depuis le réseau local.
+<FilesMatch "^(\.env|\.env\..*|composer\.(json|lock)|.*\.sql|.*\.log|.*\.md|.*\.bat|.*\.sh|.*\.ps1)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

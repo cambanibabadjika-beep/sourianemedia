@@ -24,6 +24,7 @@ $annee = date('Y');
             <div>
                 <h4>La plateforme</h4>
                 <ul>
+                    <li><a href="<?= e(url('decouvrir')) ?>">Découvrir les offres</a></li>
                     <li><a href="<?= e(url('comment-ca-marche')) ?>">Comment ça marche</a></li>
                     <li><a href="<?= e(url('annonceurs')) ?>">Devenir annonceur</a></li>
                     <li><a href="<?= e(url('le-parc')) ?>">Notre parc de panneaux</a></li>
