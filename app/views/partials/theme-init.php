@@ -13,6 +13,13 @@ declare(strict_types=1);
 <script>
 (function () {
     try {
+        var params = new URLSearchParams(window.location.search);
+        var forceTheme = params.get('theme');
+        if (forceTheme === 'sombre' || forceTheme === 'dark') {
+            localStorage.setItem('souriane-theme', 'dark');
+        } else if (forceTheme === 'clair' || forceTheme === 'light') {
+            localStorage.setItem('souriane-theme', 'light');
+        }
         var t = localStorage.getItem('souriane-theme');
         if (t !== 'light' && t !== 'dark') {
             t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';

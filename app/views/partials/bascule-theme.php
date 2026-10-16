@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 use Souriane\Core\Icone;
 ?>
-<button type="button" class="btn btn--contour btn--petit bascule-theme" data-theme-toggle
+<button type="button" class="btn btn--contour btn--petit bascule-theme" id="bascule-theme" data-theme-toggle
         aria-label="Basculer entre le thème clair et sombre" title="Thème clair / sombre">
     <span class="bascule-theme__icone bascule-theme__icone--lune" aria-hidden="true"><?= Icone::svg('lune') ?></span>
     <span class="bascule-theme__icone bascule-theme__icone--soleil" aria-hidden="true"><?= Icone::svg('soleil') ?></span>
@@ -31,11 +31,13 @@ use Souriane\Core\Icone;
         if (meta) { meta.setAttribute('content', prochain === 'dark' ? '#0F0B1E' : '#4C1D95'); }
     }
     function installer() {
-        var btn = document.querySelector('[data-theme-toggle]');
-        if (btn && !btn.dataset.themeInstalle) {
-            btn.dataset.themeInstalle = '1';
-            btn.addEventListener('click', basculer);
-        }
+        var btns = document.querySelectorAll('[data-theme-toggle]');
+        btns.forEach(function (btn) {
+            if (!btn.dataset.themeInstalle) {
+                btn.dataset.themeInstalle = '1';
+                btn.addEventListener('click', basculer);
+            }
+        });
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', installer);

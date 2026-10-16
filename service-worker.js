@@ -13,7 +13,7 @@
    changement de version les visiteurs déjà venus garderaient indéfiniment
    l’ancienne feuille de style. Le passage en v2 correspond à l’ajout des
    animations de la vitrine et du composant « chiffres du parc ». */
-var VERSION = 'souriane-v7';
+var VERSION = 'souriane-v10';
 var CACHE_COQUILLE = VERSION + '-coquille';
 var CACHE_RESSOURCES = VERSION + '-ressources';
 
@@ -162,6 +162,13 @@ self.addEventListener('fetch', function (evenement) {
 
     // Ressources d’une autre origine : laissées au navigateur
     if (url.origin !== self.location.origin) {
+        return;
+    }
+
+    // Feuilles de style et scripts : réseau d’abord, pour qu’une modification
+    // du design apparaisse tout de suite ; le cache ne sert qu’hors connexion.
+    if (/\.(css|js)$/i.test(url.pathname)) {
+        evenement.respondWith(reseauDAbord(requete));
         return;
     }
 

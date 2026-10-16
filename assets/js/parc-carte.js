@@ -286,7 +286,9 @@
        seul, et aucune commande inerte n'est proposée au visiteur. */
     bascule.hidden = false;
 
-    /* Vue initiale : la carte, puisque c'est l'objet de cette section. Le
-       tableau reste à un clic, et son contenu reste dans le document. */
-    afficher('carte');
+    /* Vue initiale : respecte ?mode=liste ou ?vue=liste si présent, sinon carte */
+    var params = new URLSearchParams(window.location.search);
+    var mode = params.get('mode') || params.get('vue');
+    var vueInitiale = (mode === 'liste' || mode === 'tableau') ? 'tableau' : 'carte';
+    afficher(vueInitiale);
 })();
