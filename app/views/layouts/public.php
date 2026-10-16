@@ -51,7 +51,7 @@ $configJs = json_encode($configuration, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_
 <?php endif; ?>
 
 <meta name="theme-color" content="#4C1D95">
-<meta name="color-scheme" content="light">
+<?php require __DIR__ . '/../partials/theme-init.php'; ?>
 <meta name="format-detection" content="telephone=no">
 
 <meta property="og:type" content="website">

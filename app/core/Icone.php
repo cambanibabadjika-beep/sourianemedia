@@ -58,6 +58,9 @@ final class Icone
         'coche-cercle'=> '<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
         'point'       => '<circle cx="12" cy="12" r="4"/>',
         'telephone-appel' => '<path d="M15.5 2h3a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1h-3"/><path d="M8 12h8"/><path d="M12 8l-4 4 4 4"/>',
+        /* Bascules de thème */
+        'soleil' => '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.4v2.3M12 19.3v2.3M2.4 12h2.3M19.3 12h2.3M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/>',
+        'lune'   => '<path d="M20.5 14.5A8.6 8.6 0 0 1 9.5 3.5a8.4 8.4 0 1 0 11 11Z"/>',
     ];
 
     /** Retourne le SVG d’une icône. */

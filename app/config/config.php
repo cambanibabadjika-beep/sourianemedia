@@ -117,7 +117,10 @@ define('DUREE_SESSION_MINUTES', 30);       // fenêtre de décompte d’une visi
  * facteur y est obligatoire. L’annonceur est un compte client — il peut
  * l’activer, rien ne l’y contraint.
  */
-define('SECURITE_2FA_ROLES', ['regie', 'agent']);
+// Désactivé pour les tests locaux (Nazaire, 16/10) : on vide la liste pour ne
+// forcer l’enrôlement de personne. Remettre ['regie', 'agent'] pour réactiver
+// la politique de sécurité (les comptes conservent leur état totp_actif).
+define('SECURITE_2FA_ROLES', []);
 
 /** Nombre de codes de secours remis à l’activation (téléphone perdu). */
 define('SECURITE_2FA_CODES_SECOURS', 8);

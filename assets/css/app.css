@@ -33,6 +33,9 @@
     /* Neutres — légèrement teintés de violet pour rester dans la charte */
     --blanc:          #FFFFFF;
     --charbon:        #1A1033;
+    /* Surface sombre de la marque (pied de page, bandeau hors-ligne) :
+       toujours sombre, ne s’inverse pas en thème clair. */
+    --surface-sombre: #1A1033;
     --gris-800:       #241C3D;
     --gris-700:       #3A3155;
     --gris-600:       #554B73;
@@ -1418,7 +1421,7 @@ html[data-anim="actif"] .panneau.reveler--visible .tableau tbody tr {
    12. Pied de page et mentions légales
    -------------------------------------------------------------------------- */
 .pied-site {
-    background: var(--charbon); color: rgba(255, 255, 255, .7);
+    background: var(--surface-sombre); color: rgba(255, 255, 255, .7);
     padding: 46px 0 30px; font-size: .89rem;
 }
 .pied-site__grille {
@@ -1473,7 +1476,7 @@ html[data-anim="actif"] .panneau.reveler--visible .tableau tbody tr {
    -------------------------------------------------------------------------- */
 .bandeau-hors-ligne {
     position: fixed; left: 0; right: 0; top: 0; z-index: 200;
-    background: var(--charbon); color: #fff; text-align: center;
+    background: var(--surface-sombre); color: #fff; text-align: center;
     padding: 9px 16px; font-size: .85rem;
     transform: translateY(-100%); transition: transform .25s ease;
     display: flex; align-items: center; justify-content: center; gap: 9px;
@@ -1984,3 +1987,127 @@ html[data-anim="actif"] .reveler.reveler--visible {
 @media print {
     .parc-carte, .parc-bascule { display: none !important; }
 }
+
+/* ==========================================================================
+   9. Thème sombre
+   --------------------------------------------------------------------------
+   Le thème est piloté par l’attribut data-theme posé sur <html> (voir
+   partials/theme-init.php). Les jetons de design sont surchargés ici ; tout le
+   reste du design system (verre, boutons, composants) suit parce qu’il consomme
+   ces jetons. Les pastels de marque (violet-50/100, lilas-100, or-100) restent
+   clairs : ce sont des surfaces « chips » lisibles en clair comme en sombre.
+   ========================================================================== */
+:root[data-theme="dark"] {
+    /* Neutres inversés : le blanc devient le fond, le charbon devient le texte */
+    --blanc:          #0F0B1E;
+    --charbon:        #ECE8F6;
+    --gris-800:       #D9D2EC;
+    --gris-700:       #B9AFD6;
+    --gris-600:       #9389B5;
+    --gris-500:       #7C729E;
+    --gris-400:       #5B5280;
+    --gris-300:       #3A3158;
+    --gris-200:       #2A2347;
+    --gris-100:       #1A1430;
+    --gris-50:        #140F26;
+
+    /* Verre teinté sombre (au lieu de blanc translucide) */
+    --verre-fond:        rgba(28, 20, 54, .60);
+    --verre-fond-fort:   rgba(34, 25, 64, .82);
+    --verre-fond-faible: rgba(28, 20, 54, .42);
+    --verre-fond-modal:  rgba(30, 22, 58, .94);
+    --verre-bord:        rgba(196, 181, 253, .26);
+    --verre-bord-faible: rgba(196, 181, 253, .16);
+    --verre-reflet:      inset 0 1px 0 rgba(255, 255, 255, .08);
+    --verre-ombre:       0 8px 30px rgba(0, 0, 0, .38), 0 2px 8px rgba(0, 0, 0, .26);
+    --verre-ombre-fort:  0 18px 48px rgba(0, 0, 0, .48), 0 4px 12px rgba(0, 0, 0, .32);
+
+    /* Ombres de surface (sur fond sombre, plus profondes) */
+    --ombre-1: 0 1px 2px rgba(0, 0, 0, .32), 0 1px 3px rgba(0, 0, 0, .42);
+    --ombre-2: 0 4px 14px rgba(0, 0, 0, .36), 0 2px 6px rgba(0, 0, 0, .30);
+    --ombre-3: 0 18px 40px rgba(0, 0, 0, .52), 0 6px 14px rgba(0, 0, 0, .36);
+}
+
+/* Aurore du corps : halos plus profonds pour tenir sur le fond sombre */
+:root[data-theme="dark"] body {
+    background-color: #0F0B1E;
+    background-image:
+        radial-gradient(46rem 30rem at 12% -10%, rgba(124, 58, 237, .34), transparent 60%),
+        radial-gradient(38rem 26rem at 90% 0%, rgba(124, 58, 237, .22), transparent 62%),
+        radial-gradient(42rem 30rem at 82% 96%, rgba(251, 191, 36, .10), transparent 64%),
+        radial-gradient(36rem 26rem at 2% 74%, rgba(167, 139, 250, .20), transparent 64%);
+}
+
+/* Surfaces translucides de section */
+:root[data-theme="dark"] .section--gris   { background: rgba(20, 15, 38, .55); }
+:root[data-theme="dark"] .section--teinte {
+    background: rgba(26, 20, 48, .60);
+    border-bottom-color: var(--gris-300);
+}
+
+/* Champs de saisie : fond sombre translucide, texte clair */
+:root[data-theme="dark"] .saisie,
+:root[data-theme="dark"] .zone-texte,
+:root[data-theme="dark"] .liste,
+:root[data-theme="dark"] .selecteur-langue select {
+    background: rgba(20, 15, 38, .72);
+    border-color: rgba(196, 181, 253, .22);
+    color: var(--charbon);
+}
+:root[data-theme="dark"] .saisie:focus,
+:root[data-theme="dark"] .zone-texte:focus,
+:root[data-theme="dark"] .liste:focus {
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, .30);
+}
+:root[data-theme="dark"] .choix__element,
+:root[data-theme="dark"] .selecteur-langue select {
+    background: rgba(20, 15, 38, .55);
+}
+:root[data-theme="dark"] .choix__element:has(input:checked) {
+    background: rgba(124, 58, 237, .30);
+    border-color: var(--lilas-700);
+    color: #fff;
+}
+
+/* Surfaces claires (or, lilas pastel) : conserver un texte sombre lisible */
+:root[data-theme="dark"] .btn--accent { color: #2E1065; }
+:root[data-theme="dark"] .bandeau-offre__etiquette { color: #2E1065; }
+
+/* Carte de connexion : c’est une « carte papier » claire posée sur la page
+   sombre. On force son contenu (titres, libellés, champs) à rester sombre pour
+   que le contraste reste lisible. */
+:root[data-theme="dark"] .connexion-carte h1 { color: #1A1033; }
+:root[data-theme="dark"] .connexion-carte__intro { color: #554B73; }
+:root[data-theme="dark"] .connexion-carte .champ__etiquette { color: #1A1033; }
+:root[data-theme="dark"] .connexion-carte .champ__aide { color: #554B73; }
+:root[data-theme="dark"] .connexion-carte .saisie,
+:root[data-theme="dark"] .connexion-carte .zone-texte,
+:root[data-theme="dark"] .connexion-carte .liste {
+    background: #fff;
+    color: #1A1033;
+    border-color: rgba(76, 29, 149, .22);
+}
+:root[data-theme="dark"] .connexion-carte .saisie:focus,
+:root[data-theme="dark"] .connexion-carte .zone-texte:focus,
+:root[data-theme="dark"] .connexion-carte .liste:focus {
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, .22);
+}
+
+/* Retours utilisateur : fond teinté sombre + texte clair lisible */
+:root[data-theme="dark"] .message--succes   { background: rgba(21, 128, 61, .20);  border-color: rgba(34, 197, 94, .35);  color: #86EFAC; }
+:root[data-theme="dark"] .message--erreur   { background: rgba(185, 28, 28, .20);  border-color: rgba(248, 113, 113, .35); color: #FCA5A5; }
+:root[data-theme="dark"] .message--info     { background: rgba(29, 78, 216, .20);  border-color: rgba(96, 165, 250, .35); color: #93C5FD; }
+:root[data-theme="dark"] .message--attention { background: rgba(180, 83, 9, .20);   border-color: rgba(251, 191, 36, .35); color: #FCD34D; }
+
+/* --------------------------------------------------------------------------
+   Bouton de bascule de thème
+   -------------------------------------------------------------------------- */
+.bascule-theme__icone { display: inline-flex; width: 18px; height: 18px; }
+.bascule-theme__icone svg { width: 18px; height: 18px; display: block; }
+/* Par défaut (clair) on propose le soleil ; en sombre on propose la lune */
+.bascule-theme__icone--soleil { display: none; }
+:root[data-theme="dark"] .bascule-theme__icone--soleil { display: inline-flex; }
+:root[data-theme="dark"] .bascule-theme__icone--lune  { display: none; }
+
+/* Bascule flottante sur les écrans de connexion (carte sans en-tête) */
+.theme-flotant { position: fixed; top: 16px; right: 16px; z-index: 90; }

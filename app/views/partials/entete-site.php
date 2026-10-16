@@ -29,6 +29,7 @@ $navigation = $navigation ?? [
                 <?= \Souriane\Core\Icone::svg('verrou') ?>
                 Espace régie
             </a>
+            <?php require __DIR__ . '/bascule-theme.php'; ?>
         </div>
     </div>
 </header>

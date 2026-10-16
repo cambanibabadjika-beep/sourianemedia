@@ -24,6 +24,7 @@ $titre = $titre ?? ('Connexion — ' . APP_NAME);
 <title><?= e($titre) ?></title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#2E1065">
+<?php require __DIR__ . '/../partials/theme-init.php'; ?>
 <link rel="icon" href="<?= e(asset('img/favicon.png')) ?>" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,6 +33,8 @@ $titre = $titre ?? ('Connexion — ' . APP_NAME);
 <link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">
 </head>
 <body>
+
+<div class="theme-flotant"><?php require __DIR__ . '/bascule-theme.php'; ?></div>
 
 <div class="connexion-page">
     <div class="connexion-carte">

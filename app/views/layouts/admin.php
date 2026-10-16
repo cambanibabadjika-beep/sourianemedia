@@ -85,6 +85,7 @@ $menu = [
 <title><?= e($titre) ?></title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#2E1065">
+<?php require __DIR__ . '/../partials/theme-init.php'; ?>
 <link rel="icon" href="<?= e(asset('img/favicon.png')) ?>" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -142,6 +143,7 @@ $menu = [
 
             <div class="admin-entete__actions">
                 <?= $actionsEntete ?>
+                <?php require __DIR__ . '/../partials/bascule-theme.php'; ?>
                 <?php if ($utilisateur !== null): ?>
                     <div class="admin-entete__utilisateur">
                         <span class="avatar" aria-hidden="true"><?= e($initiales !== '' ? $initiales : 'SA') ?></span>
