@@ -139,6 +139,28 @@ function http(string $requete): array
     return ['code' => $code, 'corps' => $corps];
 }
 
+/*
+ * ---------------------------------------------------------------------------
+ * État des abonnés, relevé AVANT le premier envoi.
+ *
+ * La diffusion tente un envoi réel vers chaque point de terminaison. Ceux du
+ * jeu de démonstration sont factices (fcm.googleapis.com/fcm/send/demo-…) : le
+ * service répond 404 ou 410, et l'application désactive alors l'abonnement.
+ * C'est exactement le comportement attendu (AC-10), mais il laisse la base
+ * dans un état qui n'est plus celui de la démonstration. Le passage suivant de
+ * cette suite échouait donc sur « cet annonceur compte au moins un abonné
+ * actif », alors que le code était correct : la suite n'était pas rejouable,
+ * contrairement à ce qu'annonce le README.
+ *
+ * On relève donc l'état complet des abonnés pour le remettre en place au
+ * nettoyage, et on vérifie que la remise en état a réellement eu lieu.
+ */
+$etatAbonnesInitial = lire(
+    "SELECT GROUP_CONCAT(CONCAT_WS('~', id, statut,"
+    . " IFNULL(DATE_FORMAT(dernier_envoi, '%Y-%m-%d %H:%i:%s'), '-'))"
+    . " ORDER BY id SEPARATOR '|') FROM abonnes"
+);
+
 // ---------------------------------------------------------------------------
 echo "\n=== 1. État initial de la file ===\n";
 
@@ -331,6 +353,42 @@ verifier('la base retrouve ses trois notifications d’origine', $totalNotificat
 
 $totalAbonnes = (int) lire('SELECT COUNT(*) FROM abonnes');
 verifier('les abonnés de démonstration sont intacts', $totalAbonnes === 3, 'total : ' . $totalAbonnes);
+
+/*
+ * Remise en état des abonnés.
+ *
+ * Les envois réels des sections 2 et 4 ont désactivé les abonnements dont le
+ * point de terminaison est factice (404/410). On rétablit l'état relevé avant
+ * le premier envoi, puis on relit la table pour le prouver — une remise en état
+ * non vérifiée ne garantit pas la rejouabilité.
+ */
+foreach (array_filter(explode('|', (string) $etatAbonnesInitial)) as $ligneAbonne) {
+    $champs = explode('~', $ligneAbonne);
+    if (count($champs) !== 3) {
+        continue;
+    }
+    [$idAbonne, $statutAbonne, $dernierEnvoi] = $champs;
+    if (!in_array($statutAbonne, ['actif', 'inactif', 'desabonne'], true)) {
+        continue;
+    }
+    ecrire(sprintf(
+        "UPDATE abonnes SET statut = '%s', dernier_envoi = %s WHERE id = %d",
+        $statutAbonne,
+        $dernierEnvoi === '-' ? 'NULL' : "'" . $dernierEnvoi . "'",
+        (int) $idAbonne
+    ));
+}
+
+$etatAbonnesFinal = lire(
+    "SELECT GROUP_CONCAT(CONCAT_WS('~', id, statut,"
+    . " IFNULL(DATE_FORMAT(dernier_envoi, '%Y-%m-%d %H:%i:%s'), '-'))"
+    . " ORDER BY id SEPARATOR '|') FROM abonnes"
+);
+verifier(
+    'les abonnés de démonstration retrouvent leur état d’origine',
+    $etatAbonnesFinal === $etatAbonnesInitial,
+    'avant : ' . $etatAbonnesInitial . ' / après : ' . $etatAbonnesFinal
+);
 
 // ---------------------------------------------------------------------------
 $total = $reussis + $echecs;

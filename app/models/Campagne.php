@@ -56,10 +56,20 @@ final class Campagne
         );
     }
 
+    /**
+     * Panneaux rattachés à une campagne, avec leur fiche support.
+     *
+     * La fiche est jointe en entier — trafic déclaré, tarif, coordonnées,
+     * format — parce que le rapport de fin de campagne (EF-F06) doit présenter
+     * côte à côte ce qui est mesuré et ce qui est déclaré sur la fiche
+     * panneau, et que la carte du parc (EF-A06) a besoin des coordonnées.
+     */
     public static function panneaux(int $campagneId): array
     {
         return Db::instance()->select(
-            'SELECT cp.*, p.reference, p.libelle, p.ville, p.format, p.statut AS panneau_statut
+            'SELECT cp.*, p.reference, p.libelle, p.adresse, p.ville, p.format, p.faces,
+                    p.trafic_estime, p.tarif, p.latitude, p.longitude, p.photo,
+                    p.statut AS panneau_statut
              FROM campagne_panneaux cp
              JOIN panneaux p ON p.id = cp.panneau_id
              WHERE cp.campagne_id = :id

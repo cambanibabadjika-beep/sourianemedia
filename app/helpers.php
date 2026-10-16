@@ -285,3 +285,77 @@ function pourcent(float|int $valeur, int $decimales = 1): string
 {
     return number_format((float) $valeur, $decimales, ',', ' ') . ' %';
 }
+
+/* ========================================================================
+   Internationalisation — EF-D08
+   ======================================================================== */
+
+/** Langues disponibles, avec le français comme référence. */
+function langues_disponibles(): array
+{
+    return ['fr' => 'Français', 'wo' => 'Wolof'];
+}
+
+/**
+ * Charge le catalogue de la langue active.
+ *
+ * La langue est déterminée dans cet ordre :
+ *   1. paramètre GET `?lang=` (si valide) — mémorisé en session
+ *   2. clé de session `_langue`
+ *   3. langue du navigateur (`Accept-Language`)
+ *   4. français par défaut
+ */
+function catalogue_langue(): array
+{
+    static $catalogue = null;
+
+    if ($catalogue !== null) {
+        return $catalogue;
+    }
+
+    $disponibles = array_keys(langues_disponibles());
+
+    // 1. Paramètre GET (et mémorisation)
+    if (isset($_GET['lang']) && in_array($_GET['lang'], $disponibles, true)) {
+        $_SESSION['_langue'] = $_GET['lang'];
+    }
+
+    // 2. Session
+    if (isset($_SESSION['_langue']) && in_array($_SESSION['_langue'], $disponibles, true)) {
+        $code = $_SESSION['_langue'];
+    } else {
+        // 3. Navigateur
+        $code = 'fr';
+        if (!empty($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
+            $pref = strtolower(substr((string) $_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, 2));
+            if (in_array($pref, $disponibles, true)) {
+                $code = $pref;
+            }
+        }
+        $_SESSION['_langue'] = $code;
+    }
+
+    $chemin = __DIR__ . '/lang/' . $code . '.php';
+    $catalogue = file_exists($chemin) ? require $chemin : [];
+
+    return $catalogue;
+}
+
+/**
+ * Traduit une clé sémantique.
+ *
+ * @param string $cle    Clé du catalogue (ex. 'nav.accueil')
+ * @param string $defaut Valeur de repli si la clé n'existe pas
+ */
+function __(string $cle, string $defaut = ''): string
+{
+    $catalogue = catalogue_langue();
+
+    return $catalogue[$cle] ?? ($defaut !== '' ? $defaut : $cle);
+}
+
+/** Code de la langue active (fr, wo…). */
+function langue_active(): string
+{
+    return $_SESSION['_langue'] ?? 'fr';
+}

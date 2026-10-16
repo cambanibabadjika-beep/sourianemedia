@@ -24,6 +24,7 @@ use Souriane\Core\Request;
 use Souriane\Core\Response;
 use Souriane\Models\Abonne;
 use Souriane\Models\Evenement;
+use Souriane\Models\Notification;
 
 final class ApiController
 {
@@ -232,11 +233,24 @@ final class ApiController
             }
         }
 
+        /*
+         * L’assemblage est demandé une seule fois : chaque appel exécute deux
+         * requêtes, et le refaire pour lire tantôt « mesure » tantôt « estime »
+         * doublait le coût sans rien apporter.
+         *
+         * Les trois natures sont renvoyées ensemble, y compris « declare » :
+         * un consommateur de l’interface de programmation doit pouvoir
+         * distinguer ce qui est mesuré de ce qui est estimé ou déclaré, comme
+         * sur le tableau de bord (EF-F07, AC-11).
+         */
+        $statistiques = Evenement::statistiquesCampagne($campagneId);
+
         return Response::json([
-            'campagne'  => ['id' => (int) $campagne['id'], 'nom' => $campagne['nom']],
-            'mesure'    => Evenement::statistiquesCampagne($campagneId)['mesure'],
-            'estimation' => Evenement::statistiquesCampagne($campagneId)['estime'],
-            'serie'     => Evenement::serieQuotidienne($campagneId, 30),
+            'campagne'   => ['id' => (int) $campagne['id'], 'nom' => $campagne['nom']],
+            'mesure'     => $statistiques['mesure'],
+            'estimation' => $statistiques['estime'],
+            'declare'    => $statistiques['declare'],
+            'serie'      => Evenement::serieQuotidienne($campagneId, 30),
         ]);
     }
 
@@ -251,6 +265,47 @@ final class ApiController
             'service' => APP_NAME,
             'version' => APP_VERSION,
             'heure'   => date('c'),
+        ]);
+    }
+
+    /**
+     * GET /api/annonceurs/{id}/notifications
+     *
+     * Dernières notifications envoyées pour un annonceur (EF-E10).
+     * Point public : les notifications envoyées sont une information
+     * que tout visiteur peut consulter, comme les offres affichées.
+     */
+    public function notificationsAnnonceur(Request $request, array $params): Response
+    {
+        $annonceurId = (int) ($params['id'] ?? 0);
+
+        if ($annonceurId <= 0) {
+            return Response::json(['erreur' => 'Identifiant invalide.'], 400);
+        }
+
+        $existe = (int) Database::instance()->selectValue(
+            "SELECT COUNT(*) FROM annonceurs WHERE id = :id AND statut = 'actif'",
+            ['id' => $annonceurId],
+            0
+        );
+        if ($existe === 0) {
+            return Response::json(['erreur' => 'Annonceur introuvable.'], 404);
+        }
+
+        $notifications = Notification::dernieresEnvoyees($annonceurId, 10);
+
+        return Response::json([
+            'annonceur_id'  => $annonceurId,
+            'notifications' => array_map(static function (array $n): array {
+                return [
+                    'id'        => (int) $n['id'],
+                    'titre'     => (string) $n['titre'],
+                    'corps'     => (string) $n['corps'],
+                    'icone'     => (string) ($n['icone'] ?? ''),
+                    'adresse'   => (string) ($n['adresse_ouverture'] ?? ''),
+                    'envoyee_le'=> (string) ($n['envoyee_le'] ?? ''),
+                ];
+            }, $notifications),
         ]);
     }
 

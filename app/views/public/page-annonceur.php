@@ -138,7 +138,7 @@ $libellesReseaux = [
             <?php if ($telephone !== ''): ?>
                 <a class="btn btn--primaire btn--action" href="tel:<?= e($telephone) ?>" data-action="clic_appel">
                     <?= Icone::svg('telephone') ?>
-                    Appeler
+                    <?= __('annonceur.appeler', 'Appeler') ?>
                 </a>
             <?php endif; ?>
             <?php if (whatsapp_lien($whatsapp) !== ''): ?>
@@ -193,16 +193,34 @@ $libellesReseaux = [
         <?php endif; ?>
 
         <!-- 6. Galerie -------------------------------------------------------- -->
-        <?php if (!empty($galerie['images']) && is_array($galerie['images'])): ?>
+        <?php
+        $itemsGalerie = [];
+        foreach (($galerie['images'] ?? []) as $image) {
+            $src = is_array($image) ? ($image['url'] ?? $image['src'] ?? '') : $image;
+            if ($src !== '') { $itemsGalerie[] = ['type' => 'image', 'src' => $src]; }
+        }
+        foreach (($galerie['videos'] ?? []) as $video) {
+            $src = is_array($video) ? ($video['url'] ?? $video['src'] ?? '') : $video;
+            if ($src !== '') { $itemsGalerie[] = ['type' => 'video', 'src' => $src]; }
+        }
+        $itemsGalerie = array_slice($itemsGalerie, 0, 9);
+        ?>
+        <?php if (!empty($itemsGalerie)): ?>
             <div class="bloc">
                 <h2 class="bloc__titre"><?= Icone::svg('photo') ?> <?= e((string) ($parType['galerie']['titre'] ?? 'En images')) ?></h2>
                 <div class="galerie">
-                    <?php foreach (array_slice($galerie['images'], 0, 9) as $image): ?>
-                        <?php $source = is_array($image) ? ($image['url'] ?? $image['src'] ?? '') : $image; ?>
-                        <?php if ($source === '') { continue; } ?>
-                        <a href="<?= e(url((string) $source)) ?>" target="_blank" rel="noopener">
-                            <img src="<?= e(url((string) $source)) ?>" alt="<?= e((string) $page['nom']) ?>" loading="lazy" width="300" height="300">
-                        </a>
+                    <?php foreach ($itemsGalerie as $item): ?>
+                        <?php if ($item['type'] === 'video'): ?>
+                            <div class="galerie__media">
+                                <video controls preload="metadata" width="300" height="300">
+                                    <source src="<?= e(url((string) $item['src'])) ?>" type="video/mp4">
+                                </video>
+                            </div>
+                        <?php else: ?>
+                            <a href="<?= e(url((string) $item['src'])) ?>" target="_blank" rel="noopener">
+                                <img src="<?= e(url((string) $item['src'])) ?>" alt="<?= e((string) $page['nom']) ?>" loading="lazy" width="300" height="300">
+                            </a>
+                        <?php endif; ?>
                     <?php endforeach; ?>
                 </div>
             </div>
@@ -255,7 +273,7 @@ $libellesReseaux = [
         <!-- 9. Horaires ------------------------------------------------------ -->
         <?php if ($horaires !== []): ?>
             <div class="bloc">
-                <h2 class="bloc__titre"><?= Icone::svg('horloge') ?> Horaires d’ouverture</h2>
+                <h2 class="bloc__titre"><?= Icone::svg('horloge') ?> <?= __('annonceur.horaires', 'Horaires d’ouverture') ?></h2>
                 <div class="horaires">
                     <?php foreach ($jours as $numero => $jour): ?>
                         <?php
@@ -302,7 +320,7 @@ $libellesReseaux = [
 
         <!-- 12. Rester informé (ch. 5.3) -------------------------------------- -->
         <div class="rester-informe">
-            <h3>Rester informé</h3>
+            <h3><?= __('annonceur.rester_informe', 'Rester informé') ?></h3>
             <p>
                 Recevez les prochaines offres de <?= e((string) $page['nom']) ?> directement sur votre
                 téléphone. Sans compte, et vous pouvez vous désinscrire à tout moment.
@@ -332,6 +350,16 @@ $libellesReseaux = [
     </a>
 <?php endif; ?>
 
+<!-- =======================================================================
+     Historique des notifications (EF-E10)
+     ====================================================================== -->
+<div class="bloc" id="bloc-historique-notifications" hidden>
+    <h2 class="bloc__titre"><?= Icone::svg('cloche') ?> <?= __('annonceur.dernieres_offres', 'Dernières offres') ?></h2>
+    <div class="historique-notifications" id="historique-notifications">
+        <p class="texte-petit"><?= __('msg.chargement', 'Chargement…') ?></p>
+    </div>
+</div>
+
 <!-- ======================================================================
      Panneau glissant « Rester informé » (ch. 5.3)
      ====================================================================== -->
@@ -340,7 +368,7 @@ $libellesReseaux = [
 <div class="feuille" id="feuille-informe" role="dialog" aria-modal="true" aria-labelledby="titre-feuille-informe" hidden>
     <div class="feuille__poignee"></div>
 
-    <h3 id="titre-feuille-informe">Rester informé</h3>
+    <h3 id="titre-feuille-informe"><?= __('annonceur.rester_informe', 'Rester informé') ?></h3>
     <p class="feuille__intro">
         Deux façons de garder le contact avec <?= e((string) $page['nom']) ?>. Choisissez celle qui vous convient.
     </p>

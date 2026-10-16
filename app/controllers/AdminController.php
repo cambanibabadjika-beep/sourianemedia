@@ -38,6 +38,7 @@ use Souriane\Models\Utilisateur;
 use Souriane\Models\Visite;
 use Souriane\Services\DiffusionService;
 use Souriane\Services\QrService;
+use Souriane\Services\SecondFacteur;
 
 final class AdminController
 {
@@ -56,6 +57,9 @@ final class AdminController
         'journal'         => ['regie'],
         'utilisateurs'    => ['regie'],
         'parametres'      => ['regie'],
+        // Chacun règle la sécurité de son propre compte : la rubrique est
+        // ouverte à tous les rôles, y compris l’annonceur.
+        'securite'        => ['regie', 'agent', 'annonceur'],
     ];
 
     // =======================================================================
@@ -130,6 +134,249 @@ final class AdminController
             'globaux'    => Evenement::compteursGlobaux(),
             'pastilles'  => $this->pastilles(),
         ]);
+    }
+
+    // =======================================================================
+    // Rapport de fin de campagne (EF-F06, EF-F07)
+    // =======================================================================
+
+    /**
+     * GET /admin/campagnes/{id}/rapport — rapport de fin de campagne.
+     *
+     * Rendu sans gabarit d’administration : le rapport est destiné à être
+     * imprimé ou transmis à l’annonceur, pas consulté dans le back-office.
+     */
+    public function campagneRapport(Request $request, array $params): Response
+    {
+        [$campagne, $refus] = $this->campagneAutorisee((int) ($params['id'] ?? 0));
+        if ($refus !== null) {
+            return $refus;
+        }
+
+        $html = View::rendre('admin/rapport-campagne', $this->donneesRapport((int) $campagne['id']));
+
+        return Response::html($html)->avecEntete('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * GET /admin/campagnes/{id}/rapport.csv — le même rapport, en tableur.
+     *
+     * L’export est produit à partir de l’assemblage qui alimente la page : un
+     * second chemin de calcul finirait par diverger, et un export qui
+     * contredit l’écran ne vaut rien.
+     */
+    public function campagneRapportCsv(Request $request, array $params): Response
+    {
+        [$campagne, $refus] = $this->campagneAutorisee((int) ($params['id'] ?? 0));
+        if ($refus !== null) {
+            return $refus;
+        }
+
+        $donnees = $this->donneesRapport((int) $campagne['id']);
+
+        $nom = strtolower((string) $campagne['nom']);
+        $nom = trim((string) preg_replace('/[^a-z0-9]+/', '-', $nom), '-');
+        $nom = ($nom !== '' ? $nom : 'campagne') . '-' . date('Ymd') . '.csv';
+
+        return Response::texte($this->csvRapport($donnees))
+            ->avecEntete('Content-Type', 'text/csv; charset=utf-8')
+            ->avecEntete('Content-Disposition', 'attachment; filename="' . $nom . '"');
+    }
+
+    /**
+     * Charge une campagne et vérifie que le compte connecté peut la lire.
+     *
+     * Un annonceur ne doit atteindre que ses propres campagnes : le rôle ouvre
+     * la rubrique, il n’ouvre pas les données des autres (EF-G01).
+     *
+     * @return array{0: ?array, 1: ?Response} La campagne, puis la réponse de
+     *         refus lorsqu’il y en a une — la campagne est alors nulle.
+     */
+    private function campagneAutorisee(int $id): array
+    {
+        if ($refus = $this->garde('campagnes')) {
+            return [null, $refus];
+        }
+
+        $campagne = $id > 0 ? Campagne::trouver($id) : null;
+        if ($campagne === null) {
+            return [null, $this->introuvable('Campagne introuvable.')];
+        }
+
+        if (Auth::role() === 'annonceur' && (int) $campagne['annonceur_id'] !== $this->annonceurCourant()) {
+            return [null, $this->refuse()];
+        }
+
+        return [$campagne, null];
+    }
+
+    /**
+     * Assemble les données du rapport de fin de campagne.
+     *
+     * Trois natures de chiffres cohabitent, et le rapport doit les tenir
+     * séparées de bout en bout (EF-F07) :
+     *   — mesuré,  ce que la Plateforme a réellement enregistré ;
+     *   — estimé,  ce qu’elle déduit du trafic déclaré par extrapolation ;
+     *   — déclaré, ce que la régie a saisi sur la fiche panneau.
+     *
+     * L’attribution par panneau vient des codes courts : chaque couple
+     * campagne × panneau porte son propre code, donc son propre compteur
+     * (EF-C01). C’est ce qui permet de dire quel panneau a produit quel scan.
+     */
+    private function donneesRapport(int $campagneId): array
+    {
+        $campagne = Campagne::trouver($campagneId) ?? [];
+        $detail   = Evenement::statistiquesCampagne($campagneId);
+
+        $debut = (string) ($campagne['date_debut'] ?? '');
+        $fin   = (string) ($campagne['date_fin'] ?? '');
+        $duree = 1;
+        if ($debut !== '' && $fin !== '') {
+            $duree = max(1, min(180, (int) round((strtotime($fin) - strtotime($debut)) / 86400) + 1));
+        }
+
+        // Mesures rattachées à chaque code court, donc à chaque panneau
+        $parPanneau = [];
+        foreach (CodeCourt::tous(['campagne_id' => $campagneId]) as $code) {
+            $pid = (int) $code['panneau_id'];
+            if (!isset($parPanneau[$pid])) {
+                $parPanneau[$pid] = ['scans' => 0, 'visiteurs' => 0, 'codes' => 0];
+            }
+            $parPanneau[$pid]['scans']     += (int) $code['scans'];
+            $parPanneau[$pid]['visiteurs'] += (int) $code['scans_session'];
+            $parPanneau[$pid]['codes']++;
+        }
+
+        $panneaux = [];
+        foreach (Campagne::panneaux($campagneId) as $ligne) {
+            $pid    = (int) $ligne['panneau_id'];
+            $mesure = $parPanneau[$pid] ?? ['scans' => 0, 'visiteurs' => 0, 'codes' => 0];
+            $trafic = (int) ($ligne['trafic_estime'] ?? 0);
+
+            $panneaux[] = [
+                'reference'        => (string) $ligne['reference'],
+                'libelle'          => (string) $ligne['libelle'],
+                'ville'            => (string) ($ligne['ville'] ?? ''),
+                'format'           => (string) ($ligne['format'] ?? ''),
+                // mesuré
+                'scans'            => $mesure['scans'],
+                'visiteurs'        => $mesure['visiteurs'],
+                'codes'            => $mesure['codes'],
+                // déclaré
+                'trafic_declare'   => $trafic,
+                // estimé, à partir du déclaré et de la durée
+                'passages_estimes' => $trafic * $duree,
+                'scans_attendus'   => (int) round($trafic * $duree * 0.01),
+            ];
+        }
+
+        $totaux = [
+            'panneaux'         => count($panneaux),
+            'scans'            => array_sum(array_column($panneaux, 'scans')),
+            'passages_estimes' => array_sum(array_column($panneaux, 'passages_estimes')),
+            // Le nombre de visiteurs uniques reste celui de la campagne : la
+            // même personne peut avoir scanné deux panneaux, une somme par
+            // panneau compterait donc des doublons.
+            'visiteurs'        => (int) ($detail['mesure']['visiteurs_uniques'] ?? 0),
+        ];
+
+        return [
+            'campagne'    => $campagne,
+            'duree'       => $duree,
+            'indicateurs' => Evenement::INDICATEURS_MESURES,
+            'mesure'      => $detail['mesure'],
+            'estime'      => $detail['estime'],
+            'declare'     => $detail['declare'],
+            // La série est bornée par la période de la campagne, pas par les
+            // trente derniers jours : un rapport de fin de campagne porte sur
+            // la campagne, et une campagne close ne produit plus d’événement.
+            'serie'       => ($debut !== '' && $fin !== '')
+                ? Evenement::seriePeriode($campagneId, $debut, $fin)
+                : Evenement::serieQuotidienne($campagneId, $duree),
+            'panneaux'    => $panneaux,
+            'totaux'      => $totaux,
+            'edite'       => date('d/m/Y à H:i'),
+        ];
+    }
+
+    /** Échappe un champ CSV : tout est cité, les guillemets sont doublés. */
+    private function csvChamp(string $valeur): string
+    {
+        return '"' . str_replace('"', '""', $valeur) . '"';
+    }
+
+    /**
+     * Met le rapport en forme pour un tableur.
+     *
+     * Séparateur point-virgule et marque d’ordre des octets en tête : le
+     * tableur français attend le point-virgule, et sans la marque il affiche
+     * « Mesuré » en « MesurÃ© ». Un export que son destinataire ne peut pas
+     * lire ne remplit pas EF-F06.
+     *
+     * Chaque ligne porte sa nature dans sa première colonne : le tri, le
+     * filtre ou la suppression d’une colonne ne peuvent pas faire passer un
+     * chiffre estimé pour une mesure (EF-F07).
+     */
+    private function csvRapport(array $d): string
+    {
+        $campagne = $d['campagne'];
+        $lignes   = [];
+
+        $lignes[] = ['Rapport de fin de campagne', (string) ($campagne['nom'] ?? '')];
+        $lignes[] = ['Annonceur', (string) ($campagne['annonceur_nom'] ?? '')];
+        $lignes[] = ['Période', date_fr((string) ($campagne['date_debut'] ?? ''))
+            . ' au ' . date_fr((string) ($campagne['date_fin'] ?? ''))];
+        $lignes[] = ['Durée', $d['duree'] . ' jour(s)'];
+        $lignes[] = ['Panneaux', (string) $d['totaux']['panneaux']];
+        $lignes[] = ['Édité le', (string) $d['edite']];
+        $lignes[] = [];
+
+        $lignes[] = ['Nature', 'Indicateur', 'Valeur', 'Précision'];
+        foreach ($d['indicateurs'] as $indicateur) {
+            $lignes[] = [
+                'Mesuré',
+                $indicateur['libelle'],
+                (string) (int) ($d['mesure'][$indicateur['cle']] ?? 0),
+                'Interaction enregistrée par la Plateforme',
+            ];
+        }
+        $lignes[] = ['Estimé', 'Trafic journalier retenu', (string) (int) $d['estime']['trafic_journalier'],
+            'Somme des trafics déclarés sur les fiches panneaux'];
+        $lignes[] = ['Estimé', 'Passages cumulés', (string) (int) $d['estime']['passages_cumules'],
+            'Trafic journalier × ' . $d['duree'] . ' jour(s)'];
+        $lignes[] = ['Estimé', 'Scans attendus', (string) (int) $d['estime']['scans_estimes'],
+            (string) $d['estime']['methode']];
+        $lignes[] = ['Déclaré', 'Source du trafic', '',
+            (string) $d['declare']['source']];
+        $lignes[] = [];
+
+        $lignes[] = [
+            'Nature', 'Panneau', 'Emplacement', 'Format',
+            'Scans (mesuré)', 'Visiteurs (mesuré)', 'Trafic par jour (déclaré)',
+            'Passages cumulés (estimé)', 'Scans attendus (estimé)',
+        ];
+        foreach ($d['panneaux'] as $p) {
+            $lignes[] = [
+                'Mixte',
+                $p['reference'],
+                $p['libelle'] . ($p['ville'] !== '' ? ' — ' . $p['ville'] : ''),
+                $p['format'],
+                (string) $p['scans'],
+                (string) $p['visiteurs'],
+                (string) $p['trafic_declare'],
+                (string) $p['passages_estimes'],
+                (string) $p['scans_attendus'],
+            ];
+        }
+        $lignes[] = ['Mixte', 'Total', '', '', (string) $d['totaux']['scans'],
+            (string) $d['totaux']['visiteurs'], '', (string) $d['totaux']['passages_estimes'], ''];
+
+        $sortie = "\xEF\xBB\xBF"; // marque d’ordre des octets, pour le tableur
+        foreach ($lignes as $ligne) {
+            $sortie .= implode(';', array_map(fn ($v) => $this->csvChamp((string) $v), $ligne)) . "\r\n";
+        }
+
+        return $sortie;
     }
 
     // =======================================================================
@@ -676,6 +923,7 @@ final class AdminController
                 ],
                 'galerie' => [
                     'images' => array_values(array_filter(array_map('trim', explode("\n", $request->string('galerie_images'))))),
+                    'videos' => array_values(array_filter(array_map('trim', explode("\n", $request->string('galerie_videos'))))),
                 ],
                 'personnalise' => ['texte' => $request->string('personnalise_texte')],
                 'offres_a_venir' => ['texte' => $request->string('avenir_texte')],
@@ -744,6 +992,208 @@ final class AdminController
         Flash::succes($crees > 0 ? $crees . ' code(s) QR généré(s).' : 'Tous les panneaux de cette campagne ont déjà leur code.');
 
         return Response::redirect(url('admin/codes?campagne=' . $campagneId));
+    }
+
+    /**
+     * POST /admin/codes/{id}/destination — change la destination d’un code
+     * court sans réimprimer le visuel (EF-C03, AC-03).
+     *
+     * Le code lui-même, donc le QR imprimé, ne change pas : seule la cible de
+     * la redirection est modifiée. C’est tout l’intérêt de l’indirection.
+     */
+    public function codeDestination(Request $request, array $params): Response
+    {
+        if ($refus = $this->garde('codes')) {
+            return $refus;
+        }
+        if ($refus = Csrf::verifier($request)) {
+            return $refus;
+        }
+
+        $id   = (int) ($params['id'] ?? 0);
+        $code = CodeCourt::trouver($id);
+
+        if ($code === null) {
+            Flash::erreur('Code introuvable.');
+
+            return Response::redirect(url('admin/codes'));
+        }
+
+        $retour = url('admin/codes?campagne=' . (int) $code['campagne_id']);
+        $saisie = trim($request->string('destination'));
+
+        // Champ vidé : retour au comportement par défaut, la page de l’annonceur
+        if ($saisie === '') {
+            CodeCourt::modifier($id, ['destination' => null]);
+            journal_operation(
+                Auth::id(),
+                'modification',
+                'codes_courts',
+                $id,
+                'Destination réinitialisée vers la page de l’annonceur',
+                $request->ip()
+            );
+            Flash::succes('Destination réinitialisée : le code mène de nouveau à la page de l’annonceur.');
+
+            return Response::redirect($retour);
+        }
+
+        if (!CodeCourt::destinationValide($saisie)) {
+            Flash::erreur(
+                'Destination refusée. Indiquez un chemin interne commençant par « / » '
+                . '(par exemple /quincaillerie-bignona), ou une adresse complète en « https:// ».'
+            );
+
+            return Response::redirect($retour);
+        }
+
+        CodeCourt::modifier($id, ['destination' => $saisie]);
+        journal_operation(
+            Auth::id(),
+            'modification',
+            'codes_courts',
+            $id,
+            'Destination du code ' . $code['code'] . ' modifiée',
+            $request->ip()
+        );
+        Flash::succes('Destination modifiée. Le visuel imprimé reste valable : le QR code n’a pas changé.');
+
+        return Response::redirect($retour);
+    }
+
+    /**
+     * GET /admin/codes/{id}/affiche — affiche imprimable portant le QR code
+     * (EF-G06, ch. 5.1).
+     *
+     * La règle de dimensionnement du cahier des charges est appliquée à la
+     * lettre : la largeur du QR code vaut au moins la distance de lecture
+     * divisée par dix. Pour cinq mètres, cela donne un symbole de cinquante
+     * centimètres. La mesure porte sur le symbole et non sur l’image, la marge
+     * de silence ajoutant quatre modules de chaque côté. Le format de papier
+     * le plus petit capable de porter l’ensemble — marge comprise — est retenu
+     * automatiquement, jusqu’au A0.
+     *
+     * Deux modèles de visuel sont proposés, conformément à EF-G06 : le grand
+     * panneau, lu de loin, et l’affichette de vitrine, lue de près.
+     *
+     * Paramètres d’adresse : `distance` (mètres, 1 à 20, défaut 5) et `modele`
+     * (`panneau` ou `vitrine`).
+     */
+    public function codeAffiche(Request $request, array $params): Response
+    {
+        if ($refus = $this->garde('codes')) {
+            return $refus;
+        }
+
+        $id   = (int) ($params['id'] ?? 0);
+        $code = CodeCourt::trouver($id);
+
+        if ($code === null) {
+            return $this->introuvable('Code introuvable.');
+        }
+
+        $contexte  = CodeCourt::contexte($id) ?? $code;
+        $urlCourte = url_courte((string) $code['code']);
+
+        // Distance de lecture visée, en mètres. Sur un panneau grand format en
+        // bord de route, le cahier des charges vise 60 à 80 cm de largeur.
+        $distance = (float) ($request->query['distance'] ?? 5.0);
+        $distance = max(1.0, min(20.0, $distance));
+
+        // Largeur du symbole : distance / 10, en centimètres (ch. 5.1)
+        $largeurSymbole = round($distance * 10, 1);
+
+        /*
+         * Le code est dessiné en noir sur blanc, et non dans le violet de la
+         * charte. Deux raisons, toutes deux tirées du chapitre 5.1 : le code
+         * doit être sombre sur fond clair, et il doit rester lisible en plein
+         * soleil, après la pluie, sur un support qui vieillit. Le noir pur
+         * tolère mieux l’impression bon marché et l’encrassement que n’importe
+         * quelle teinte, si contrastée soit-elle à l’écran. Le niveau H — 30 %
+         * de redondance, le maximum — est retenu pour la même raison.
+         */
+        $qr     = QrService::dessiner($urlCourte, 'H', 10, 4, '#000000');
+        $facteur = ($qr['modules'] + 2 * $qr['zoneSilence']) / $qr['modules'];
+
+        // Largeur réellement occupée sur le papier : le symbole augmenté de sa
+        // marge de silence, qui fait quatre modules de chaque côté.
+        $largeurImage = round($largeurSymbole * $facteur, 1);
+
+        // Formats ISO 216, en centimètres, en orientation portrait — donc de
+        // largeur égale au plus petit côté. La réserve couvre les marges de la
+        // feuille ; la zone de silence, elle, est déjà comprise dans la largeur
+        // de l’image et n’est pas comptée deux fois.
+        $formats = [
+            'A4' => [21.0, 29.7],
+            'A3' => [29.7, 42.0],
+            'A2' => [42.0, 59.4],
+            'A1' => [59.4, 84.1],
+            'A0' => [84.1, 118.9],
+        ];
+        $reserve = 4.0; // marges de la feuille, en centimètres
+
+        $formatRetenu = null;
+        foreach ($formats as $nom => [$largeur, $hauteur]) {
+            if (min($largeur, $hauteur) - $reserve >= $largeurImage) {
+                $formatRetenu = $nom;
+                break;
+            }
+        }
+
+        /*
+         * Au-delà du A0, il n’y a plus de format normalisé : la feuille reste
+         * en A0 et l’affiche est signalée comme trop petite pour la distance
+         * visée. C’est le cas des panneaux grand format du chapitre 5.1, dont
+         * la largeur utile de 60 à 80 cm dépasse ce que porte un A0 une fois
+         * la marge de silence comptée. Le contrôleur transmet alors les
+         * dimensions exactes à commander, plutôt que de laisser imprimer
+         * silencieusement un code illisible.
+         */
+        $formatRetenu = $formatRetenu ?? 'A0';
+        [$papierL, $papierH] = $formats[$formatRetenu];
+        $utile        = min($papierL, $papierH) - $reserve;
+        $assezGrand   = $largeurImage <= $utile;
+
+        // Le code n’est jamais agrandi au-delà du papier : s’il ne tient pas,
+        // il est imprimé au maximum disponible et l’avertissement explique
+        // quoi faire. Un dessin tronqué serait pire qu’un dessin trop petit.
+        $largeurImprimee = min($largeurImage, $utile);
+
+        // Deux compositions : le grand panneau, lu de loin, et l’affichette de
+        // vitrine, lue à bout portant. Le modèle demandé est validé ici, afin
+        // qu’une valeur inventée dans l’adresse retombe sur le modèle courant.
+        $modele = (string) ($request->query['modele'] ?? 'panneau');
+        if (!in_array($modele, ['panneau', 'vitrine'], true)) {
+            $modele = 'panneau';
+        }
+
+        /*
+         * L’affiche est rendue sans gabarit d’administration : c’est une
+         * feuille destinée au papier. Le menu latéral, l’en-tête et le pied de
+         * page n’y ont rien à faire, et les masquer en CSS laisserait des
+         * éléments dans le document imprimé. Le gabarit public ne convient pas
+         * davantage — son en-tête de site et son bandeau hors-ligne seraient
+         * eux aussi imprimés. La vue produit donc son propre document, avec sa
+         * règle @page dimensionnée sur le format retenu.
+         */
+        $html = View::rendre('admin/code-affiche', [
+            'code'            => $contexte,
+            'destination'     => CodeCourt::destination($contexte),
+            'modele'          => $modele,
+            'distance'        => $distance,
+            'largeurSymbole'  => $largeurSymbole,
+            'largeurImage'    => $largeurImage,
+            'largeurImprimee' => $largeurImprimee,
+            'qr'              => $qr['svg'],
+            'format'          => $formatRetenu,
+            'papierLargeur'   => $papierL,
+            'papierHauteur'   => $papierH,
+            'largeurUtile'    => round($utile, 1),
+            'assezGrand'      => $assezGrand,
+            'urlCourte'       => $urlCourte,
+        ]);
+
+        return Response::html($html)->avecEntete('Cache-Control', 'no-store, private');
     }
 
     /** GET /admin/codes/{id}/qr.svg — planche imprimable */
@@ -1186,6 +1636,166 @@ final class AdminController
     }
 
     // =======================================================================
+    // Sécurité du compte — second facteur (ch. 8)
+    // =======================================================================
+
+    /** GET /admin/securite */
+    public function securite(Request $request): Response
+    {
+        if ($refus = $this->garde('securite')) {
+            return $refus;
+        }
+
+        $utilisateur = Auth::utilisateur();
+
+        return $this->vue('admin/securite', [
+            'titrePage'     => 'Sécurité du compte',
+            'section'       => 'securite',
+            'courriel'      => (string) ($utilisateur['email'] ?? ''),
+            'role'          => (string) ($utilisateur['role'] ?? ''),
+            'actif'         => SecondFacteur::actif($utilisateur),
+            'obligatoire'   => SecondFacteur::obligatoire((string) ($utilisateur['role'] ?? '')),
+            'confirmeLe'    => $utilisateur['totp_confirme_le'] ?? null,
+            'codesRestants' => SecondFacteur::restants($utilisateur),
+            // Pris une seule fois : l’appel les retire de la session.
+            'codesNeufs'    => Auth::prendreCodesSecours(),
+            'pastilles'     => $this->pastilles(),
+        ]);
+    }
+
+    /** POST /admin/securite/activer */
+    public function securiteActiver(Request $request): Response
+    {
+        if ($refus = $this->garde('securite')) {
+            return $refus;
+        }
+        if ($refus = Csrf::verifier($request)) {
+            return $refus;
+        }
+
+        $utilisateur = Auth::utilisateur();
+        if ($utilisateur === null) {
+            return Response::redirect(url('admin/connexion'));
+        }
+
+        // Mettre en place un second facteur engage l’accès au compte : le mot
+        // de passe est redemandé, pour qu’une session restée ouverte sur un
+        // poste partagé ne suffise pas à s’approprier le compte.
+        if (!$this->motDePasseConfirme($request, $utilisateur)) {
+            return Response::redirect(url('admin/securite'));
+        }
+
+        if (SecondFacteur::actif($utilisateur)) {
+            Flash::info('La vérification en deux étapes est déjà active.');
+
+            return Response::redirect(url('admin/securite'));
+        }
+
+        Auth::demanderEnrolement((int) $utilisateur['id']);
+
+        return Response::redirect(url('admin/connexion/enrolement'));
+    }
+
+    /** POST /admin/securite/desactiver */
+    public function securiteDesactiver(Request $request): Response
+    {
+        if ($refus = $this->garde('securite')) {
+            return $refus;
+        }
+        if ($refus = Csrf::verifier($request)) {
+            return $refus;
+        }
+
+        $utilisateur = Auth::utilisateur();
+        if ($utilisateur === null) {
+            return Response::redirect(url('admin/connexion'));
+        }
+
+        if (!$this->motDePasseConfirme($request, $utilisateur)) {
+            return Response::redirect(url('admin/securite'));
+        }
+
+        // Le contrôle est placé avant la vérification du code : inutile de
+        // consommer un intervalle de trente secondes pour une action qui sera
+        // refusée de toute façon.
+        if (SecondFacteur::obligatoire((string) $utilisateur['role'])) {
+            Flash::erreur(
+                'Ce compte relève de l’administration : le chapitre 8 impose la vérification en '
+                . 'deux étapes. Elle ne peut pas être retirée.'
+            );
+
+            return Response::redirect(url('admin/securite'));
+        }
+
+        if (!SecondFacteur::verifierCode((int) $utilisateur['id'], $utilisateur, (string) $request->input('code', ''))) {
+            Flash::erreur('Code refusé : la vérification en deux étapes reste active.');
+
+            return Response::redirect(url('admin/securite'));
+        }
+
+        SecondFacteur::desactiver((int) $utilisateur['id']);
+        journal_operation((int) $utilisateur['id'], 'modification', 'utilisateurs', (int) $utilisateur['id'], 'Second facteur désactivé', $request->ip());
+        Flash::succes('Vérification en deux étapes désactivée.');
+
+        return Response::redirect(url('admin/securite'));
+    }
+
+    /** POST /admin/securite/codes */
+    public function securiteRegenererCodes(Request $request): Response
+    {
+        if ($refus = $this->garde('securite')) {
+            return $refus;
+        }
+        if ($refus = Csrf::verifier($request)) {
+            return $refus;
+        }
+
+        $utilisateur = Auth::utilisateur();
+        if ($utilisateur === null) {
+            return Response::redirect(url('admin/connexion'));
+        }
+
+        if (!$this->motDePasseConfirme($request, $utilisateur)) {
+            return Response::redirect(url('admin/securite'));
+        }
+
+        if (!SecondFacteur::actif($utilisateur)) {
+            Flash::erreur('Activez d’abord la vérification en deux étapes.');
+
+            return Response::redirect(url('admin/securite'));
+        }
+
+        if (!SecondFacteur::verifierCode((int) $utilisateur['id'], $utilisateur, (string) $request->input('code', ''))) {
+            Flash::erreur('Code refusé : les codes de secours n’ont pas été remplacés.');
+
+            return Response::redirect(url('admin/securite'));
+        }
+
+        Auth::retenirCodesSecours(SecondFacteur::regenererCodes((int) $utilisateur['id']));
+        journal_operation((int) $utilisateur['id'], 'modification', 'utilisateurs', (int) $utilisateur['id'], 'Codes de secours remplacés', $request->ip());
+        Flash::succes('Nouveaux codes de secours. Les précédents ne fonctionnent plus.');
+
+        return Response::redirect(url('admin/securite'));
+    }
+
+    /** Confirme le mot de passe du compte connecté, et le signale sinon. */
+    private function motDePasseConfirme(Request $request, array $utilisateur): bool
+    {
+        $saisi = (string) $request->input('mot_de_passe', '');
+
+        if ($saisi !== '' && password_verify($saisi, (string) $utilisateur['mot_de_passe'])) {
+            return true;
+        }
+
+        journal_technique('securite', 'Mot de passe non confirmé sur une action de sécurité', [
+            'email' => (string) ($utilisateur['email'] ?? ''),
+        ]);
+        Flash::erreur('Mot de passe incorrect.');
+
+        return false;
+    }
+
+    // =======================================================================
     // Fabriques internes
     // =======================================================================
 
@@ -1202,6 +1812,13 @@ final class AdminController
     /** Vérifie le rôle requis pour la rubrique. */
     private function garde(string $section): ?Response
     {
+        // Un compte d’administration qui n’a pas encore mis en place son
+        // second facteur est conduit là où il peut le faire, plutôt que
+        // renvoyé vers un écran de connexion dont il vient de sortir.
+        if (Auth::enrolementRequis()) {
+            return Response::redirect(url('admin/connexion/enrolement'));
+        }
+
         if (!Auth::verifie()) {
             return Response::redirect(url('admin/connexion?retour=' . rawurlencode($_SERVER['REQUEST_URI'] ?? '/admin')));
         }

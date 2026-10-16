@@ -108,6 +108,40 @@ define('LOG_PATH', STORAGE_PATH . '/logs');
 define('PLAFOND_NOTIFICATIONS_MOIS', 4);   // ch. 5.5
 define('DUREE_SESSION_MINUTES', 30);       // fenêtre de décompte d’une visite
 
+/*
+ * Second facteur (ch. 8) : « Les comptes d’administration sont protégés par
+ * une authentification à deux facteurs. »
+ *
+ * La régie pilote toute la plateforme, l’agent terrain agit sur le parc, les
+ * poses et les codes : ce sont les deux comptes d’administration, et le second
+ * facteur y est obligatoire. L’annonceur est un compte client — il peut
+ * l’activer, rien ne l’y contraint.
+ */
+define('SECURITE_2FA_ROLES', ['regie', 'agent']);
+
+/** Nombre de codes de secours remis à l’activation (téléphone perdu). */
+define('SECURITE_2FA_CODES_SECOURS', 8);
+
+/**
+ * Délai laissé pour saisir le code, ou pour mener l’enrôlement à son terme.
+ * Au-delà, le mot de passe doit être ressaisi : une connexion à moitié faite
+ * ne doit pas rester ouverte indéfiniment sur un poste partagé.
+ */
+define('SECURITE_2FA_DELAI', 600);
+
+/** Émetteur affiché dans l’application d’authentification. */
+define('SECURITE_2FA_EMETTEUR', (string) env('SECURITE_2FA_EMETTEUR', 'Souriane'));
+
+/**
+ * Clé partagée des comptes de démonstration.
+ *
+ * Renseignée par cron/preparer_2fa_demo.php, qui refuse de s’exécuter hors
+ * mode démonstration. Elle n’est affichée que lorsque APP_DEBUG est vrai —
+ * au même titre que le mot de passe de démonstration imprimé sur l’écran de
+ * connexion. En production la valeur reste vide et rien n’est divulgué.
+ */
+define('SECURITE_2FA_SECRET_DEMO', (string) env('SECURITE_2FA_SECRET_DEMO', ''));
+
 /**
  * Détecte l’URL de base si APP_URL n’est pas renseignée.
  */

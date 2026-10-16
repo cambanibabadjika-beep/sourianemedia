@@ -228,18 +228,80 @@ final class PublicController
     // Pages de contenu
     // -----------------------------------------------------------------------
 
+    /**
+     * GET /le-parc — parc de panneaux, filtrable (EF-A05).
+     *
+     * Le filtrage est assuré par le serveur et non par le navigateur. Trois
+     * raisons, dans l’ordre d’importance :
+     *   — l’adresse obtenue est partageable telle quelle, ce qui compte pour
+     *     une vitrine commerciale : un prospect peut envoyer le lien d’une
+     *     sélection ;
+     *   — la page fonctionne sans JavaScript, y compris le compteur ;
+     *   — le décompte annoncé est celui de ce qui est affiché, sans dépendre
+     *     de l’exécution d’un script.
+     *
+     * Les valeurs reçues sont confrontées à celles réellement présentes dans
+     * le parc : une valeur inventée dans l’adresse est ignorée plutôt que de
+     * produire une page vide sans explication.
+     */
     public function parc(Request $request): Response
     {
+        $villes  = Panneau::villes();
+        $formats = Panneau::formats();
+        $statuts = ['disponible', 'reserve', 'occupe', 'maintenance', 'archive'];
+
+        $ville      = $this->choixFiltre($request->query['ville'] ?? null, $villes);
+        $format     = $this->choixFiltre($request->query['format'] ?? null, $formats);
+        $statut     = $this->choixFiltre($request->query['statut'] ?? null, $statuts);
+        $disponible = ($request->query['disponible'] ?? '') === '1';
+
+        $filtres = [
+            'ville'  => $ville,
+            'format' => $format,
+            'statut' => $statut,
+            // Un support retiré du parc n’a pas sa place dans une vitrine :
+            // il n’apparaît que si le visiteur le demande explicitement.
+            'exclure_archive' => $statut !== 'archive',
+        ];
+        if ($disponible) {
+            $filtres['disponible_seulement'] = true;
+        }
+
         $html = View::rendre('public/parc', [
             'titre'         => 'Le parc de panneaux — ' . APP_NAME,
             'description'   => 'Références, emplacements, formats, trafic estimé et disponibilité des supports d’affichage Souriane.',
             'canonique'     => url('le-parc'),
-            'panneaux'      => Panneau::tous(),
+            'panneaux'      => Panneau::tous($filtres),
             'villes'        => Panneau::parVille(),
+            'villesParc'    => $villes,
+            'formatsParc'   => $formats,
+            'statutsParc'   => $statuts,
+            'filtres'       => [
+                'ville'      => $ville,
+                'format'     => $format,
+                'statut'     => $statut,
+                'disponible' => $disponible,
+            ],
             'configuration' => $this->configuration(),
+            'entetesExtra'  => '<link rel="stylesheet" href="' . e(asset('lib/leaflet/leaflet.css')) . '">',
+            'scripts'       => '<script src="' . e(asset('lib/leaflet/leaflet.js')) . '" defer></script>'
+                . '<script src="' . e(asset('js/parc-carte.js')) . '" defer></script>',
         ], 'public');
 
         return Response::html($html)->avecCache(300);
+    }
+
+    /**
+     * Retient une valeur de filtre si elle figure parmi les valeurs possibles.
+     *
+     * Une valeur absente, vide ou inconnue est ignorée : le filtre est alors
+     * simplement inactif, et le parc s’affiche en entier.
+     */
+    private function choixFiltre(mixed $valeur, array $possibles): string
+    {
+        $valeur = trim((string) $valeur);
+
+        return in_array($valeur, array_map('strval', $possibles), true) ? $valeur : '';
     }
 
     public function commentCaMarche(Request $request): Response

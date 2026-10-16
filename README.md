@@ -2,13 +2,16 @@
 
 Plateforme d'affichage extérieur connecté : chaque panneau porte un QR code qui
 ouvre la page d'un annonceur local, dans un ordre de présentation imposé. Les
-visiteurs peuvent installer le site comme application (PWA) et s'abonner aux
-notifications de l'annonceur, dans la limite de quatre envois par mois.
+visiteurs peuvent installer le site comme application (PWA), s'abonner aux
+notifications de l'annonceur, consulter le parc sur une carte interactive,
+visualiser des vidéos courtes dans la galerie, et retrouver l'historique des
+offres reçues. Les campagnes sont pilotées par une régie, les poses contrôlées
+par un agent terrain.
 
 - **PHP 8.3**, sans framework ni dépendance Composer
 - **MySQL 8+** (testé sur 9.1), moteur InnoDB, `utf8mb4_unicode_ci`
 - **PDO** en requêtes préparées exclusivement, émulation désactivée
-- **Vanilla JS**, aucune bibliothèque côté client
+- **Vanilla JS**, aucune bibliothèque côté client (sauf Leaflet embarqué pour la carte du parc)
 
 ---
 
@@ -97,11 +100,11 @@ par `.htaccess` et ne doivent jamais être servis.
 
 ### 2.6 Comptes de démonstration
 
-| Adresse | Mot de passe | Rôle |
-|---|---|---|
-| `admin@souriane.sn` | `Souriane2026!` | Régie — accès complet |
-| `agent@souriane.sn` | `Souriane2026!` | Agent terrain |
-| `annonceur@souriane.sn` | `Souriane2026!` | Annonceur |
+| Adresse | Mot de passe | Rôle | 2FA |
+|---|---|---|---|
+| `admin@souriane.sn` | `Souriane2026!` | Régie — accès complet | préactivé (clé demo) |
+| `agent@souriane.sn` | `Souriane2026!` | Agent terrain | préactivé (clé demo) |
+| `annonceur@souriane.sn` | `Souriane2026!` | Annonceur | désactivé |
 
 **Ces comptes doivent être supprimés ou re-mot de passe avant toute mise en
 production.**
@@ -122,33 +125,41 @@ app/
   helpers.php              échappement, URL, dates, étiquettes d'état
   config/config.php        lecture du .env, constantes applicatives
   core/                    Router, Request, Response, Database, Auth,
-                           Csrf, RateLimiter, Session, View, Flash, Icone
+                           Csrf, RateLimiter, Session, View, Flash, Icone,
+                           Totp (RFC 6238), Coffre (AES-256-GCM)
   controllers/             Public, Api, Auth, Admin, Cron
   models/                  11 modèles, requêtes préparées uniquement
-  services/                QrService, PushService, DiffusionService
+  services/                QrService, PushService, DiffusionService,
+                           SecondFacteur (TOTP, codes de secours)
   views/
     layouts/               public.php, admin.php
     partials/              logo, en-tête, pied de page, messages
     public/                vitrine, page-annonceur, parc, statique, erreur
-    admin/                 18 vues du back-office
+    admin/                 18 vues du back-office + connexion 2FA + sécurité
 
 assets/
   css/app.css              design system public
   css/admin.css            back-office
-  js/app.js                mesure d'audience, PWA, notifications
+  js/app.js                mesure d'audience, PWA, notifications, historique
+  js/parc-carte.js         carte interactive du parc (Leaflet)
+  lib/leaflet/             Leaflet 1.9.4 embarqué (vendored)
   img/                     logo, favicons, icônes PWA
+
+app/lang/                  catalogues de traduction (fr, wo…)
 
 cron/
   generer_cles.php         génération des clés VAPID
   envoyer_notifications.php  traitement de la file d'envoi
+  preparer_2fa_demo.php    active le second facteur sur les comptes démo
 
-sql/                       structure + données de démonstration
+sql/                       structure (16 tables, 3 vues) + migration 2FA
 storage/                   journaux, limitations, téléversements (inscriptible)
 tests/
-  verifier_api.php         API JSON (CSRF, abonnements, limitation de débit)
-  verifier_admin.php       back-office (rubriques, rôles, écritures)
+  verifier_api.php         API JSON (CSRF, abonnements, limitation, 2FA)
+  verifier_admin.php       back-office (rubriques, rôles, écritures, 2FA)
   verifier_cron.php        file d'envoi et plafond mensuel
   verifier_contraste.php   contrastes WCAG de la charte
+  verifier_totp.php        RFC 6238, base32, anti-rejeu, codes de secours
   verifier_animations.js   animations et rendu du bloc chiffres (navigateur)
   generer_icones.js        régénère les icônes depuis le logo
   capturer_site.js         captures d'écran du site et du back-office
@@ -172,7 +183,12 @@ tests/
 | POST | `/api/abonnements` | enregistrement d'un abonnement push |
 | POST | `/api/abonnements/suppression` | désabonnement |
 | GET | `/api/campagnes/{id}/statistiques` | statistiques (authentifié) |
+| GET | `/api/annonceurs/{id}/notifications` | historique public des notifications |
 | GET/POST | `/tache/notifications` | déclencheur de la tâche planifiée |
+| GET/POST | `/admin/connexion` | connexion (mot de passe) |
+| GET/POST | `/admin/connexion/code` | second facteur TOTP |
+| GET/POST | `/admin/connexion/enrolement` | enrôlement 2FA |
+| GET/POST | `/admin/securite` | sécurité du compte (2FA, codes de secours) |
 | GET/POST | `/admin/...` | back-office (rôle requis par rubrique) |
 
 Le motif `/{adresse}` est déclaré **en dernier** : c'est le plus générique.
@@ -231,16 +247,39 @@ mêmes notifications.
 
 ---
 
+## 6 bis. Second facteur (ch. 8)
+
+Les comptes `regie` et `agent` sont protégés par un second facteur TOTP
+(RFC 6238) sans dépendance externe :
+
+- **Secret** : 160 bits, chiffré en AES-256-GCM via `Coffre` (clé dérivée avec
+  HKDF), jamais stocké en clair.
+- **QR d'enrôlement** : URI `otpauth://` générée par `QrService` (SVG inline).
+- **Codes de secours** : 8 codes à usage unique, hashés avec SHA-256.
+- **Anti-rejeu** : chaque pas de 30 s ne peut être utilisé qu'une fois ; le
+  champ `totp_dernier_pas` bloque la réutilisation.
+- **Enrôlement forcé** : un compte `regie` ou `agent` sans 2FA actif est
+  redirigé vers l'écran d'enrôlement dès la connexion. L'annonceur peut
+  l'activer volontairement.
+
+La migration `sql/2fa.sql` ajoute les cinq colonnes nécessaires à la table
+`utilisateurs`. Le script `cron/preparer_2fa_demo.php` active le 2FA sur les
+comptes de démonstration avec une clé publique (RFC 6238 Annexe B) pour
+permettre aux tests de lire le code attendu sans backdoor.
+
+---
+
 ## 7. Vérifications
 
 Quatre suites PHP et une suite navigateur couvrent le parcours complet. Elles
 nécessitent que le site soit servi et que la base de démonstration soit chargée.
 
 ```bash
-php tests/verifier_api.php          # API JSON : CSRF, abonnements, limitation
-php tests/verifier_admin.php        # back-office : rubriques, rôles, écritures
+php tests/verifier_api.php          # API JSON : CSRF, abonnements, limitation, 2FA
+php tests/verifier_admin.php        # back-office : rubriques, rôles, écritures, 2FA
 php tests/verifier_cron.php         # file d'envoi et plafond mensuel
 php tests/verifier_contraste.php    # contrastes WCAG de la charte
+php tests/verifier_totp.php         # RFC 6238, base32, anti-rejeu, codes de secours
 
 node tests/verifier_animations.js   # animations, dans un vrai navigateur
 ```
@@ -249,12 +288,13 @@ node tests/verifier_animations.js   # animations, dans un vrai navigateur
 
 | Suite | Vérifications |
 |---|---|
-| `verifier_api.php` | 31 |
-| `verifier_admin.php` | 67 |
-| `verifier_cron.php` | 27 |
-| `verifier_contraste.php` | 29 |
+| `verifier_api.php` | 62 |
+| `verifier_admin.php` | 186 |
+| `verifier_cron.php` | 28 |
+| `verifier_contraste.php` | 28 |
+| `verifier_totp.php` | 33 |
 | `verifier_animations.js` | 31 |
-| **Total** | **185** |
+| **Total** | **368** |
 
 Les suites PHP nettoient les données qu'elles ont créées et rendent la base dans
 son état d'origine. Utiliser de préférence l'interpréteur livré avec le serveur
@@ -463,6 +503,25 @@ code, souvent en 4G depuis un téléphone d'entrée de gamme.
   pour les navigations, page hors ligne en repli.
 - Mesure d'audience par lots : les interactions sont accumulées puis envoyées
   en un seul appel, au plus tard à la fermeture de l'onglet.
+
+---
+
+## 11 bis. Langue locale (EF-D08)
+
+Un mécanisme d'internationalisation léger est intégré :
+
+- **Catalogues** dans `app/lang/` : un fichier par langue (`fr.php`, `wo.php`…).
+  Le français est le catalogue de référence ; chaque autre langue n'a qu'à
+  traduire les valeurs.
+- **Fonction `__(clé, défaut)`** dans `helpers.php` : charge le catalogue de la
+  langue active et renvoie la traduction, ou le défaut si la clé n'existe pas.
+- **Détection** : paramètre GET `?lang=`, session, ou `Accept-Language` du
+  navigateur. Le choix est mémorisé en session.
+- **Sélecteur** : menu déroulant dans le pied de page du site public.
+
+Le wolof (`wo`) est fourni en exemple pour les termes les plus visibles.
+L'ajout d'une langue se résume à copier `app/lang/fr.php`, traduire les
+valeurs, et ajouter l'entrée dans `langues_disponibles()`.
 
 ---
 

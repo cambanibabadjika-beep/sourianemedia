@@ -1,0 +1,35 @@
+Leaflet — bibliothèque de cartographie interactive
+==================================================
+
+Fichiers embarqués
+------------------
+  leaflet.js    md5 35b48eb991f383702f153452506e07b2
+  leaflet.css   md5 c02c12fe5e21d2493070649584ca38b7
+
+Version   : 1.9.4
+Licence   : BSD-2-Clause (voir https://github.com/Leaflet/Leaflet/blob/main/LICENSE)
+Source    : https://registry.npmjs.org/leaflet/-/leaflet-1.9.4.tgz
+            (archive de 869 361 octets, sha512 commençant par 9f14b5ca7cc93a63)
+
+Vérification d'intégrité
+------------------------
+Les deux fichiers ci-dessus ont été comparés octet pour octet à ceux de
+l'archive npm officielle de la version 1.9.4 : ils sont identiques. Le contrôle
+a été fait le 15/10/2026 et peut être rejoué ainsi :
+
+  curl -o leaflet-1.9.4.tgz https://registry.npmjs.org/leaflet/-/leaflet-1.9.4.tgz
+  tar xzf leaflet-1.9.4.tgz
+  md5sum package/dist/leaflet.js package/dist/leaflet.css
+
+Pourquoi embarqué plutôt que chargé depuis un CDN
+-------------------------------------------------
+La plateforme n'a aucune dépendance externe à l'exécution, et une carte est
+précisément ce qu'un visiteur ouvre depuis un téléphone, sur un réseau mobile.
+Un script chargé depuis un tiers ajouterait un point de panne, une fuite de
+référence vers ce tiers à chaque affichage, et rendrait la page dépendante d'un
+service qui peut disparaître ou être bloqué.
+
+Mise à jour
+-----------
+Remplacer les deux fichiers, mettre à jour les empreintes ci-dessus, et
+revérifier contre l'archive npm de la nouvelle version.

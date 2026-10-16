@@ -14,6 +14,7 @@
 declare(strict_types=1);
 
 use Souriane\Core\Icone;
+use Souriane\Models\Evenement;
 
 $mesure = $detail['mesure'] ?? [];
 $estime = $detail['estime'] ?? [];
@@ -22,20 +23,10 @@ foreach ($serie as $jour) {
     $maxSerie = max($maxSerie, (int) $jour['scans']);
 }
 
-/** Indicateurs mesurés présentés à l’identique du chapitre 5.7. */
-$lignes = [
-    ['cle' => 'scans_bruts',        'libelle' => 'Scans bruts',            'icone' => 'qr'],
-    ['cle' => 'visiteurs_uniques',  'libelle' => 'Visiteurs uniques',      'icone' => 'utilisateurs'],
-    ['cle' => 'affichages',         'libelle' => 'Pages affichées',        'icone' => 'site'],
-    ['cle' => 'clics_appel',        'libelle' => 'Clics sur « Appeler »',  'icone' => 'telephone'],
-    ['cle' => 'clics_whatsapp',     'libelle' => 'Clics WhatsApp',         'icone' => 'whatsapp'],
-    ['cle' => 'clics_itineraire',   'libelle' => 'Demandes d’itinéraire',  'icone' => 'itineraire'],
-    ['cle' => 'clic_reseau',        'libelle' => 'Clics réseaux sociaux',  'icone' => 'partage'],
-    ['cle' => 'clic_rester_informe','libelle' => 'Ouvertures « Rester informé »', 'icone' => 'cloche'],
-    ['cle' => 'installations',      'libelle' => 'Installations',          'icone' => 'telecharger'],
-    ['cle' => 'abonnements',        'libelle' => 'Abonnements',            'icone' => 'coche-cercle'],
-    ['cle' => 'desabonnements',     'libelle' => 'Désabonnements',         'icone' => 'fermer'],
-];
+/* Indicateurs mesurés, dans l’ordre du chapitre 5.7. La définition vit dans le
+   modèle : le tableau de bord, le rapport de fin de campagne et son export
+   lus depuis la même source ne peuvent pas diverger. */
+$lignes = Evenement::INDICATEURS_MESURES;
 ?>
 
 <div class="panneau">
@@ -56,6 +47,22 @@ $lignes = [
                 </select>
                 <noscript><button type="submit" class="btn btn--primaire btn--petit">Afficher</button></noscript>
             </form>
+        <?php endif; ?>
+
+        <?php if ((int) $campagneId > 0): ?>
+            <!-- Rapport de fin de campagne : page imprimable et export
+                 tableur (EF-F06). Le rapport est destiné à sortir du
+                 back-office, il s’ouvre donc dans un onglet à part. -->
+            <div class="pile" style="margin-top:14px">
+                <a class="btn btn--primaire btn--petit" target="_blank" rel="noopener"
+                   href="<?= e(url('admin/campagnes/' . (int) $campagneId . '/rapport')) ?>">
+                    <?= Icone::svg('graphique') ?> Rapport de fin de campagne
+                </a>
+                <a class="btn btn--contour btn--petit"
+                   href="<?= e(url('admin/campagnes/' . (int) $campagneId . '/rapport.csv')) ?>">
+                    <?= Icone::svg('telecharger') ?> Export CSV
+                </a>
+            </div>
         <?php endif; ?>
     </div>
 </div>

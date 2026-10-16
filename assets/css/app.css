@@ -1144,10 +1144,40 @@ html[data-anim="actif"] .panneau.reveler--visible .tableau tbody tr {
 
 /* Galerie */
 .galerie { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.galerie a { display: block; border-radius: var(--rayon-xs); overflow: hidden; aspect-ratio: 1; background: var(--gris-100); }
-.galerie img { width: 100%; height: 100%; object-fit: cover; transition: transform .25s ease; }
+.galerie a, .galerie__media { display: block; border-radius: var(--rayon-xs); overflow: hidden; aspect-ratio: 1; background: var(--gris-100); }
+.galerie img, .galerie video { width: 100%; height: 100%; object-fit: cover; transition: transform .25s ease; }
 .galerie a:hover img { transform: scale(1.06); }
+.galerie__media video { display: block; }
 @media (max-width: 420px) { .galerie { grid-template-columns: repeat(2, 1fr); } }
+
+/* Historique des notifications (EF-E10) */
+.historique-notifications { display: grid; gap: 12px; }
+.historique-notifications__item {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px; border-radius: var(--rayon-xs);
+    background: var(--gris-50); border: 1px solid var(--gris-100);
+}
+.historique-notifications__icone { flex-shrink: 0; }
+.historique-notifications__icone img,
+.historique-notifications__defaut {
+    display: block; width: 40px; height: 40px; border-radius: var(--rayon-xs);
+    background: var(--gris-100); object-fit: cover;
+}
+.historique-notifications__corps { flex: 1; min-width: 0; }
+.historique-notifications__titre {
+    margin: 0 0 4px; font-size: 1rem; font-weight: 600; line-height: 1.3;
+}
+.historique-notifications__texte {
+    margin: 0 0 8px; font-size: .94rem; color: var(--gris-500); line-height: 1.4;
+}
+.historique-notifications__meta {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: .82rem; color: var(--gris-400);
+}
+.historique-notifications__lien {
+    color: var(--primaire); text-decoration: none; font-weight: 500;
+}
+.historique-notifications__lien:hover { text-decoration: underline; }
 
 /* Horaires */
 .horaires { display: grid; gap: 2px; font-size: .94rem; }
@@ -1407,6 +1437,12 @@ html[data-anim="actif"] .panneau.reveler--visible .tableau tbody tr {
     display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px;
     padding-top: 22px; font-size: .83rem; color: rgba(255, 255, 255, .5);
 }
+.selecteur-langue select {
+    background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25);
+    border-radius: var(--rayon-xs); padding: 4px 10px; font-size: .82rem;
+    cursor: pointer;
+}
+.selecteur-langue select:focus { outline: 2px solid var(--or); outline-offset: 2px; }
 
 .mentions {
     font-size: .8rem; color: var(--gris-500);
@@ -1777,4 +1813,174 @@ html[data-anim="actif"] .reveler.reveler--visible {
     .etat--disponible::before { animation: none !important; }
     .inclinable, .inclinable--suivi { transform: none !important; }
     .chiffre:hover { transform: none !important; }
+}
+
+/* ==========================================================================
+   18. Carte interactive du parc (EF-A06)
+   ========================================================================== */
+
+/* Le conteneur de la carte est masqué par défaut ; JavaScript le révèle
+   quand la bascule passe sur « carte ». */
+.parc-carte {
+    width: 100%;
+    height: 480px;
+    border-radius: var(--rayon);
+    overflow: hidden;
+    border: 1px solid var(--gris-200);
+    margin-bottom: 18px;
+    background: var(--gris-50);
+}
+
+/* Bascule entre la carte et le tableau */
+.parc-bascule {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+.parc-bascule__bouton {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: var(--rayon-plein);
+    border: 1.5px solid var(--gris-200);
+    background: rgba(255, 255, 255, .72);
+    color: var(--gris-700);
+    font-family: var(--police-titre);
+    font-size: .88rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+.parc-bascule__bouton svg { width: 16px; height: 16px; }
+.parc-bascule__bouton:hover {
+    border-color: var(--violet-300);
+    color: var(--violet);
+}
+.parc-bascule__bouton.est-actif {
+    background: var(--violet);
+    border-color: var(--violet);
+    color: #fff;
+}
+
+/* Avertissement affiché quand aucun support n'a de coordonnées */
+.parc-carte__avertissement {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 14px 16px;
+    border-radius: var(--rayon-sm);
+    background: var(--info-fond);
+    color: var(--violet-900);
+    font-size: .93rem;
+    margin-bottom: 14px;
+}
+.parc-carte__avertissement svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; }
+
+/* Bulles des épingles : même style que les blocs de verre */
+.leaflet-popup-content-wrapper {
+    background: var(--verre-fond-fort) !important;
+    -webkit-backdrop-filter: var(--verre-flou-fort) !important;
+    backdrop-filter: var(--verre-flou-fort) !important;
+    border: 1px solid var(--verre-bord) !important;
+    border-radius: var(--rayon) !important;
+    box-shadow: var(--verre-reflet), var(--verre-ombre) !important;
+    padding: 0 !important;
+}
+.leaflet-popup-content {
+    margin: 0 !important;
+    padding: 16px 18px;
+    font-family: var(--police-corps);
+    font-size: .92rem;
+    color: var(--charbon);
+    line-height: 1.5;
+}
+.leaflet-popup-tip {
+    background: var(--verre-fond-fort) !important;
+    border: 1px solid var(--verre-bord) !important;
+    box-shadow: none !important;
+}
+.leaflet-container a.leaflet-popup-close-button {
+    color: var(--gris-500);
+    font-size: 1.3rem;
+    padding: 6px 8px;
+    top: 2px;
+    right: 4px;
+}
+.leaflet-container a.leaflet-popup-close-button:hover { color: var(--violet); }
+
+/* Contenu de la bulle */
+.bulle { max-width: 260px; }
+.bulle__titre {
+    display: block;
+    font-family: var(--police-titre);
+    font-size: 1.05rem;
+    margin-bottom: 2px;
+}
+.bulle__sous-titre {
+    display: block;
+    color: var(--gris-600);
+    font-size: .87rem;
+    margin-bottom: 8px;
+}
+.bulle .etat {
+    margin-bottom: 10px;
+    font-size: .82rem;
+}
+.bulle__ligne {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 3px 0;
+    font-size: .88rem;
+}
+.bulle__etiquette {
+    color: var(--gris-500);
+    font-weight: 500;
+}
+.bulle__valeur {
+    color: var(--gris-800);
+    text-align: right;
+}
+.bulle__lien {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 7px 14px;
+    border-radius: var(--rayon-plein);
+    border: 1.5px solid var(--violet-200);
+    background: var(--violet-50);
+    color: var(--violet);
+    font-family: var(--police-titre);
+    font-size: .84rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .18s ease, border-color .18s ease;
+}
+.bulle__lien:hover {
+    background: var(--violet-100);
+    border-color: var(--violet-400);
+}
+
+/* Épingle SVG : aucune ombre portée, le contraste suffit */
+.epingle { display: block; }
+.epingle svg { display: block; }
+
+/* Ligne du tableau mise en avant depuis la carte */
+.ligne--mise-en-avant {
+    animation: surligner-ligne 2.2s ease-out both;
+}
+@keyframes surligner-ligne {
+    0%   { background: var(--or-100); }
+    70%  { background: var(--or-100); }
+    100% { background: transparent; }
+}
+
+/* Adaptations mobiles */
+@media (max-width: 760px) {
+    .parc-carte { height: 360px; }
+    .bulle { max-width: 220px; }
+}
+
+@media print {
+    .parc-carte, .parc-bascule { display: none !important; }
 }

@@ -376,6 +376,82 @@
     })();
 
     /* ---------------------------------------------------------------------
+       5 bis. Historique des notifications reçues (EF-E10)
+       --------------------------------------------------------------------- */
+    var HistoriqueNotifications = (function () {
+        var conteneur = null;
+        var bloc      = null;
+
+        function formaterDate(iso) {
+            if (!iso) { return ''; }
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) { return iso; }
+            return d.toLocaleDateString('fr-FR', {
+                day: 'numeric', month: 'long', year: 'numeric'
+            });
+        }
+
+        function init() {
+            conteneur = document.getElementById('historique-notifications');
+            bloc      = document.getElementById('bloc-historique-notifications');
+
+            if (!conteneur || !C.annonceur) {
+                return;
+            }
+
+            fetch((C.api || '') + '/annonceurs/' + encodeURIComponent(C.annonceur) + '/notifications', {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin'
+            })
+            .then(function (reponse) {
+                return reponse.json().catch(function () { return {}; })
+                    .then(function (charge) {
+                        if (!reponse.ok) {
+                            throw new Error(charge.erreur || 'Erreur ' + reponse.status);
+                        }
+                        return charge;
+                    });
+            })
+            .then(function (donnees) {
+                var notifications = donnees.notifications || [];
+                if (notifications.length === 0) {
+                    if (bloc) { bloc.hidden = true; }
+                    return;
+                }
+
+                var html = notifications.map(function (n) {
+                    var date = formaterDate(n.envoyee_le);
+                    var icone = n.icone
+                        ? '<img src="' + encodeURI(n.icone) + '" alt="" width="40" height="40" loading="lazy">'
+                        : '<span class="historique-notifications__defaut"></span>';
+                    var lien = n.adresse
+                        ? '<a href="' + encodeURI(n.adresse) + '" class="historique-notifications__lien" target="_blank" rel="noopener">En savoir plus</a>'
+                        : '';
+                    return '<article class="historique-notifications__item">' +
+                        '<div class="historique-notifications__icone">' + icone + '</div>' +
+                        '<div class="historique-notifications__corps">' +
+                            '<h3 class="historique-notifications__titre">' + (n.titre || 'Offre') + '</h3>' +
+                            '<p class="historique-notifications__texte">' + (n.corps || '') + '</p>' +
+                            '<footer class="historique-notifications__meta">' +
+                                '<time datetime="' + (n.envoyee_le || '') + '">' + date + '</time>' + lien +
+                            '</footer>' +
+                        '</div>' +
+                    '</article>';
+                }).join('');
+
+                conteneur.innerHTML = html;
+                if (bloc) { bloc.hidden = false; }
+            })
+            .catch(function () {
+                if (bloc) { bloc.hidden = true; }
+            });
+        }
+
+        return { init: init };
+    })();
+
+    /* ---------------------------------------------------------------------
        6. Abonnement aux notifications (ch. 5.5)
        --------------------------------------------------------------------- */
     var Notifications = (function () {
@@ -801,85 +877,6 @@
     })();
 
     /* ---------------------------------------------------------------------
-       9. Filtre du parc
-       ---------------------------------------------------------------------
-       Filtrage côté client sur /le-parc. Deux principes :
-
-       1. Les lignes sont MASQUÉES via l'attribut `hidden`, jamais retirées du
-          DOM. Le clavier et les lecteurs d'écran ne tombent donc pas sur une
-          ligne invisible, et un retour au filtre précédent est instantané.
-       2. Le compteur annoncé est celui des lignes réellement visibles, pas la
-          longueur de la liste d'origine.
-       --------------------------------------------------------------------- */
-    var FiltreParc = (function () {
-
-        var SELECTEUR_VISIBLE = '.tableau--parc tbody tr:not([hidden])';
-
-        function appliquer(selecteur, valeur) {
-            var lignes = document.querySelectorAll('.tableau--parc tbody tr');
-            var visibles = 0;
-
-            for (var i = 0; i < lignes.length; i++) {
-                var ligne = lignes[i];
-                var correspond = valeur === 'toutes'
-                    || ligne.getAttribute('data-ville') === valeur;
-
-                if (correspond) {
-                    ligne.removeAttribute('hidden');
-                    visibles++;
-                } else {
-                    ligne.setAttribute('hidden', '');
-                }
-            }
-
-            var resultat = document.getElementById('parc-resultat');
-            if (resultat) {
-                resultat.textContent = String(visibles);
-            }
-
-            var enveloppe = document.getElementById('parc-tableau');
-            var vide = document.getElementById('parc-vide');
-
-            if (enveloppe) {
-                enveloppe.classList.toggle('tableau-enveloppe--actif', visibles !== 0);
-            }
-            if (vide) {
-                vide.hidden = visibles !== 0;
-            }
-        }
-
-        function init() {
-            var boutons = document.querySelectorAll('[data-filtre]');
-
-            if (boutons.length === 0) {
-                return;
-            }
-
-            function activer(choisi) {
-                for (var i = 0; i < boutons.length; i++) {
-                    var actif = boutons[i].getAttribute('data-filtre') === choisi;
-                    boutons[i].setAttribute('aria-pressed', actif ? 'true' : 'false');
-                }
-            }
-
-            for (var j = 0; j < boutons.length; j++) {
-                sur(boutons[j], 'click', function (evenement) {
-                    var cible = evenement.currentTarget;
-                    var valeur = cible.getAttribute('data-filtre') || 'toutes';
-                    activer(valeur);
-                    appliquer(null, valeur);
-                });
-            }
-
-            // État initial : tout est visible, mais on calcule le compteur pour
-            // qu'il ne dépende pas du nombre de lignes écrites dans le HTML.
-            appliquer(null, 'toutes');
-        }
-
-        return { init: init };
-    })();
-
-    /* ---------------------------------------------------------------------
        Démarrage
        --------------------------------------------------------------------- */
     function demarrer() {
@@ -887,9 +884,9 @@
         initMesure();
         initBoutonFlottant();
         Animations.init();
-        FiltreParc.init();
         Feuille.init();
         Installation.init();
+        HistoriqueNotifications.init();
         Notifications.init();
 
         initServiceWorker().then(function () {

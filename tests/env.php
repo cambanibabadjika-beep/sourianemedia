@@ -23,6 +23,21 @@
 
 declare(strict_types=1);
 
+/*
+ * Le fuseau de l'application est fixé dans app/bootstrap.php. Le harnais doit
+ * appliquer le même, pour la même raison que ci-dessus : s'il ne le fait pas,
+ * il ne voit pas ce que voit l'application.
+ *
+ * Mesure du 15/10/2026 : php.ini de cette machine définit date.timezone =
+ * Europe/Berlin (UTC+2 en été) tandis que l'application force Africa/Dakar
+ * (UTC+0). Entre 22 h et minuit UTC, les deux désignent deux jours différents.
+ * verifier_cron.php cherchait alors storage/logs/app-<lendemain>.log, que
+ * l'application n'écrit évidemment pas, et l'assertion « le refus est consigné
+ * dans le journal technique » échouait — sans que rien ne soit cassé dans le
+ * code. Le défaut ne se manifestait donc que deux heures par jour.
+ */
+date_default_timezone_set('Africa/Dakar');
+
 /**
  * Lit un fichier .env et rend les couples clé => valeur.
  *

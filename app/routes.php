@@ -48,6 +48,7 @@ $routeur->post('/api/evenements', [$api, 'evenements']);
 $routeur->post('/api/abonnements', [$api, 'abonnement']);
 $routeur->post('/api/abonnements/suppression', [$api, 'desabonnement']);
 $routeur->get('/api/campagnes/{id}/statistiques', [$api, 'statistiquesCampagne']);
+$routeur->get('/api/annonceurs/{id}/notifications', [$api, 'notificationsAnnonceur']);
 
 // ===========================================================================
 // 3. Tâche planifiée (ch. 5.5)
@@ -62,6 +63,14 @@ $routeur->post('/tache/notifications', [$cron, 'notifications']);
 // ===========================================================================
 $routeur->get('/admin/connexion', [$auth, 'formulaire']);
 $routeur->post('/admin/connexion', [$auth, 'connecter']);
+
+// Second facteur (ch. 8) : code à usage unique, puis enrôlement.
+// Déclarés après la connexion, dont ils prolongent le parcours.
+$routeur->get('/admin/connexion/code', [$auth, 'formulaireCode']);
+$routeur->post('/admin/connexion/code', [$auth, 'verifierCode']);
+$routeur->get('/admin/connexion/enrolement', [$auth, 'formulaireEnrolement']);
+$routeur->post('/admin/connexion/enrolement', [$auth, 'activerEnrolement']);
+
 $routeur->post('/admin/deconnexion', [$auth, 'deconnecter']);
 
 // ===========================================================================
@@ -88,6 +97,9 @@ $routeur->get('/admin/campagnes/nouveau', [$admin, 'campagneFormulaire']);
 $routeur->post('/admin/campagnes/nouveau', [$admin, 'campagneEnregistrer']);
 $routeur->post('/admin/campagnes/{id}/reserver', [$admin, 'campagneReserver']);
 $routeur->post('/admin/campagnes/{id}/retirer', [$admin, 'campagneRetirerPanneau']);
+// Rapport de fin de campagne : page imprimable et export tableur (EF-F06)
+$routeur->get('/admin/campagnes/{id}/rapport', [$admin, 'campagneRapport']);
+$routeur->get('/admin/campagnes/{id}/rapport.csv', [$admin, 'campagneRapportCsv']);
 $routeur->get('/admin/campagnes/{id}', [$admin, 'campagneFormulaire']);
 $routeur->post('/admin/campagnes/{id}', [$admin, 'campagneEnregistrer']);
 
@@ -106,7 +118,9 @@ $routeur->post('/admin/pages/{id}', [$admin, 'pageEnregistrer']);
 // --- QR codes
 $routeur->get('/admin/codes', [$admin, 'codes']);
 $routeur->post('/admin/codes/generer', [$admin, 'codesGenerer']);
+$routeur->post('/admin/codes/{id}/destination', [$admin, 'codeDestination']);
 $routeur->get('/admin/codes/{id}/qr.svg', [$admin, 'codeQr']);
+$routeur->get('/admin/codes/{id}/affiche', [$admin, 'codeAffiche']);
 
 // --- Notifications
 $routeur->get('/admin/notifications', [$admin, 'notifications']);
@@ -127,6 +141,12 @@ $routeur->get('/admin/utilisateurs', [$admin, 'utilisateurs']);
 $routeur->post('/admin/utilisateurs', [$admin, 'utilisateurEnregistrer']);
 $routeur->get('/admin/parametres', [$admin, 'parametres']);
 $routeur->post('/admin/parametres', [$admin, 'parametresEnregistrer']);
+
+// --- Sécurité du compte (second facteur, ch. 8)
+$routeur->get('/admin/securite', [$admin, 'securite']);
+$routeur->post('/admin/securite/activer', [$admin, 'securiteActiver']);
+$routeur->post('/admin/securite/desactiver', [$admin, 'securiteDesactiver']);
+$routeur->post('/admin/securite/codes', [$admin, 'securiteRegenererCodes']);
 
 // ===========================================================================
 // 6. Page publique d’un annonceur — motif le plus générique, en dernier

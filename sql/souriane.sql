@@ -57,6 +57,16 @@ CREATE TABLE `utilisateurs` (
     `derniere_connexion` DATETIME NULL,
     `tentatives_echec` TINYINT UNSIGNED NOT NULL DEFAULT 0,
     `verrouille_jusqua` DATETIME  NULL,
+    -- Second facteur des comptes d’administration (ch. 8).
+    -- Le secret doit être relu à chaque connexion pour recalculer le code
+    -- attendu : il ne peut donc pas être haché comme un mot de passe, il est
+    -- chiffré par le coffre applicatif (AES-256-GCM). Pour une installation
+    -- déjà en service, ces colonnes sont ajoutées par sql/2fa.sql.
+    `totp_secret`        VARCHAR(255)  NULL COMMENT 'Secret TOTP, chiffré',
+    `totp_actif`         TINYINT(1)    NOT NULL DEFAULT 0,
+    `totp_confirme_le`   DATETIME      NULL,
+    `totp_dernier_pas`   BIGINT UNSIGNED NULL COMMENT 'Intervalle de 30 s déjà consommé',
+    `totp_codes_secours` TEXT          NULL COMMENT 'Empreintes SHA-256, une par ligne',
     `cree_le`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `maj_le`        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),

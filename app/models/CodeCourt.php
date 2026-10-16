@@ -51,24 +51,53 @@ final class CodeCourt
         return Db::instance()->selectOne('SELECT * FROM codes_courts WHERE id = :id', ['id' => $id]);
     }
 
+    /**
+     * Colonnes du contexte d’un code, partagées par ses deux lectures :
+     * la résolution d’un scan et la préparation d’une affiche. Les garder
+     * en un seul endroit évite que les deux vues du même objet divergent.
+     */
+    private const COLONNES_CONTEXTE = 'cc.*,
+            c.nom AS campagne_nom, c.id AS campagne_id, c.statut AS campagne_statut,
+            c.date_debut, c.date_fin,
+            p.id AS panneau_id, p.reference AS panneau_reference, p.libelle AS panneau_libelle,
+            p.ville,
+            a.id AS annonceur_id, a.nom AS annonceur_nom, a.adresse_courte AS annonceur_slug,
+            pg.id AS page_id, pg.adresse_courte AS page_slug, pg.statut AS page_statut';
+
+    /** Jointures communes aux deux lectures de contexte. */
+    private const JOINTURES_CONTEXTE = 'FROM codes_courts cc
+             JOIN campagnes c ON c.id = cc.campagne_id
+             JOIN panneaux p ON p.id = cc.panneau_id
+             JOIN annonceurs a ON a.id = c.annonceur_id
+             LEFT JOIN pages pg ON pg.annonceur_id = a.id';
+
     /** Résout un code court et retourne le contexte complet du scan. */
     public static function resoudre(string $code): ?array
     {
         return Db::instance()->selectOne(
-            'SELECT cc.*,
-                    c.nom AS campagne_nom, c.id AS campagne_id, c.statut AS campagne_statut,
-                    c.date_debut, c.date_fin,
-                    p.id AS panneau_id, p.reference AS panneau_reference, p.libelle AS panneau_libelle,
-                    a.id AS annonceur_id, a.nom AS annonceur_nom, a.adresse_courte AS annonceur_slug,
-                    pg.id AS page_id, pg.adresse_courte AS page_slug, pg.statut AS page_statut
-             FROM codes_courts cc
-             JOIN campagnes c ON c.id = cc.campagne_id
-             JOIN panneaux p ON p.id = cc.panneau_id
-             JOIN annonceurs a ON a.id = c.annonceur_id
-             LEFT JOIN pages pg ON pg.annonceur_id = a.id
+            'SELECT ' . self::COLONNES_CONTEXTE . ' ' . self::JOINTURES_CONTEXTE . '
              WHERE cc.code = :code AND cc.actif = 1
              LIMIT 1',
             ['code' => $code]
+        );
+    }
+
+    /**
+     * Contexte d’un code désigné par son identifiant, qu’il soit actif ou non.
+     *
+     * `resoudre()` filtre sur `actif = 1` : c’est juste pour le parcours de
+     * scan, un code désactivé ne devant plus mener nulle part. L’affiche, en
+     * revanche, doit rester régénérable — on peut vouloir réimprimer le visuel
+     * d’un code momentanément suspendu, ou simplement le consulter avant de le
+     * réactiver. D’où cette seconde lecture, sans le filtre.
+     */
+    public static function contexte(int $id): ?array
+    {
+        return Db::instance()->selectOne(
+            'SELECT ' . self::COLONNES_CONTEXTE . ' ' . self::JOINTURES_CONTEXTE . '
+             WHERE cc.id = :id
+             LIMIT 1',
+            ['id' => $id]
         );
     }
 
@@ -130,11 +159,49 @@ final class CodeCourt
         return url_courte((string) $code['code']);
     }
 
-    /** Destination finale d’un scan. */
+    /**
+     * Une destination de code court n’est acceptée que sous deux formes :
+     * un chemin interne — commençant par « / » mais pas par « // », qui
+     * désignerait un hôte externe — ou une adresse « https:// ».
+     *
+     * Toute autre valeur est refusée : schéma « javascript: » ou « data: »,
+     * adresse « http:// » non chiffrée, ou caractère de contrôle. La
+     * destination est en effet recopiée telle quelle dans un en-tête Location
+     * (EF-C03, ch. 8) ; une valeur non filtrée y ouvrirait une redirection
+     * vers un site tiers.
+     */
+    public static function destinationValide(?string $valeur): bool
+    {
+        $valeur = trim((string) $valeur);
+
+        if ($valeur === '' || mb_strlen($valeur) > 255) {
+            return false;
+        }
+        if (preg_match('/[\x00-\x1F\x7F]/', $valeur) === 1) {
+            return false;
+        }
+        if (str_starts_with($valeur, '//')) {
+            return false;
+        }
+        if (str_starts_with($valeur, '/')) {
+            return true;
+        }
+
+        return preg_match('#^https://[^\s]+$#i', $valeur) === 1;
+    }
+
+    /**
+     * Destination finale d’un scan.
+     *
+     * La surcharge enregistrée n’est retenue que si elle est valide : une
+     * valeur refusée à la saisie, ou devenue invalide après coup, ne doit
+     * jamais être renvoyée au navigateur. Le repli est la page de l’annonceur.
+     */
     public static function destination(array $code): string
     {
-        if (!empty($code['destination'])) {
-            return (string) $code['destination'];
+        $surcharge = (string) ($code['destination'] ?? '');
+        if (self::destinationValide($surcharge)) {
+            return $surcharge;
         }
 
         $slug = $code['page_slug'] ?? $code['annonceur_slug'] ?? '';

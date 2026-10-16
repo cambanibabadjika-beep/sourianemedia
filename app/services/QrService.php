@@ -118,6 +118,29 @@ final class QrService
         int $zoneSilence = 4,
         string $couleur = '#4C1D95'
     ): string {
+        return self::dessiner($donnees, $niveau, $moduleSize, $zoneSilence, $couleur)['svg'];
+    }
+
+    /**
+     * Rend le QR code en SVG et retourne aussi sa mesure.
+     *
+     * La taille d’impression se calcule sur la largeur du **symbole**, pas sur
+     * celle de l’image : la marge de silence ajoute `zoneSilence` modules de
+     * chaque côté (ch. 5.1), si bien qu’une image de dix centimètres peut ne
+     * porter qu’un symbole de huit. Exposer le nombre de modules ici évite
+     * d’encoder deux fois la même donnée — une fois pour dessiner, une fois
+     * pour mesurer — et garantit que les deux mesures portent sur le même
+     * dessin.
+     *
+     * @return array{svg: string, modules: int, zoneSilence: int}
+     */
+    public static function dessiner(
+        string $donnees,
+        string $niveau = 'Q',
+        int $moduleSize = 6,
+        int $zoneSilence = 4,
+        string $couleur = '#4C1D95'
+    ): array {
         $modules = self::matrice($donnees, $niveau);
         $n       = count($modules);
         $total   = ($n + $zoneSilence * 2) * $moduleSize;
@@ -136,7 +159,7 @@ final class QrService
             }
         }
 
-        return sprintf(
+        $svg = sprintf(
             '<svg xmlns="http://www.w3.org/2000/svg" width="%1$d" height="%1$d" viewBox="0 0 %1$d %1$d" role="img" aria-label="QR code">'
             . '<rect width="%1$d" height="%1$d" fill="#FFFFFF"/>'
             . '<g fill="%2$s" shape-rendering="crispEdges">%3$s</g></svg>',
@@ -144,6 +167,8 @@ final class QrService
             $couleur,
             implode('', $rects)
         );
+
+        return ['svg' => $svg, 'modules' => $n, 'zoneSilence' => $zoneSilence];
     }
 
     /** Retourne la matrice sous forme de chaînes « 0 » / « 1 ». */

@@ -64,12 +64,41 @@ foreach ($codes as $code) {
                         <div class="carte-qr__secours"><?= e((string) ($code['code_secours'] ?? '')) ?></div>
                         <div class="carte-qr__pied">
                             <?= e((string) $code['scans']) ?> scan(s) ·
-                            <?= e((string) $code['scans_session']) ?> visiteur(s)
+                            <?= e((string) $code['scans_session']) ?> visite(s)
                         </div>
+
+                        <!-- Destination du code (EF-C03, AC-03).
+                             Le code court encodé dans le visuel ne change pas :
+                             seule la cible de la redirection est modifiée, ce
+                             qui évite de réimprimer l’affiche. -->
+                        <form class="carte-qr__destination" method="post"
+                              action="<?= e(url('admin/codes/' . $code['id'] . '/destination')) ?>">
+                            <?= Csrf::champ() ?>
+                            <label class="sr-only" for="destination-<?= e((string) $code['id']) ?>">
+                                Destination du code <?= e((string) $code['code']) ?>
+                            </label>
+                            <input class="saisie saisie--petit" type="text"
+                                   id="destination-<?= e((string) $code['id']) ?>"
+                                   name="destination" maxlength="255"
+                                   value="<?= e((string) ($code['destination'] ?? '')) ?>"
+                                   placeholder="Page de l’annonceur (par défaut)">
+                            <button type="submit" class="btn btn--contour btn--petit">
+                                <?= Icone::svg('valider') ?> Rediriger
+                            </button>
+                        </form>
+                        <div class="carte-qr__pied">
+                            Mène vers :
+                            <code><?= e(\Souriane\Models\CodeCourt::destination($code)) ?></code>
+                        </div>
+
                         <div class="pile" style="justify-content:center;margin-top:12px">
                             <a class="btn btn--contour btn--petit" href="<?= e(url('admin/codes/' . $code['id'] . '/qr.svg')) ?>"
                                download="qr-<?= e((string) $code['code']) ?>.svg">
                                 <?= Icone::svg('telecharger') ?> SVG
+                            </a>
+                            <a class="btn btn--contour btn--petit" target="_blank" rel="noopener"
+                               href="<?= e(url('admin/codes/' . $code['id'] . '/affiche')) ?>">
+                                <?= Icone::svg('panneau') ?> Affiche
                             </a>
                             <a class="btn btn--contour btn--petit" target="_blank" rel="noopener"
                                href="<?= e(url_courte((string) $code['code'])) ?>">

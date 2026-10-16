@@ -38,6 +38,15 @@ final class Panneau
         if (!empty($filtres['disponible_seulement'])) {
             $sql .= ' AND p.statut IN (\'disponible\')';
         }
+        /*
+         * Les supports retirés du parc n’ont pas leur place dans une vitrine
+         * commerciale. Ils restent consultables en les demandant
+         * explicitement — l’administration, elle, n’exclut rien : elle doit
+         * voir le parc tel qu’il est, archivés compris.
+         */
+        if (!empty($filtres['exclure_archive'])) {
+            $sql .= " AND p.statut <> 'archive'";
+        }
 
         $sql .= ' ORDER BY p.reference ASC';
 

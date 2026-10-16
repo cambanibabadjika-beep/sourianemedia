@@ -43,6 +43,11 @@ $images = [];
 foreach (($galerie['images'] ?? []) as $image) {
     $images[] = is_array($image) ? (string) ($image['url'] ?? $image['src'] ?? '') : (string) $image;
 }
+
+$videos = [];
+foreach (($galerie['videos'] ?? []) as $video) {
+    $videos[] = is_array($video) ? (string) ($video['url'] ?? $video['src'] ?? '') : (string) $video;
+}
 ?>
 
 <div class="encart">
@@ -220,6 +225,12 @@ foreach (($galerie['images'] ?? []) as $image) {
                     <textarea class="zone-texte" id="galerie_images" name="galerie_images" rows="4"
                               placeholder="storage/uploads/photo-1.jpg"><?= e(implode("\n", array_filter($images))) ?></textarea>
                     <div class="champ__aide">Une adresse par ligne. Les images sont servies en 300 × 300 px maximum (neuf images affichées).</div>
+                </div>
+                <div class="champ pleine-largeur">
+                    <label class="champ__etiquette" for="galerie_videos">Adresses des vidéos courtes</label>
+                    <textarea class="zone-texte" id="galerie_videos" name="galerie_videos" rows="3"
+                              placeholder="storage/uploads/video-1.mp4"><?= e(implode("\n", array_filter($videos))) ?></textarea>
+                    <div class="champ__aide">Une adresse par ligne. Format recommandé : MP4 (H.264), 720 px de large, moins de 30 Mo. Les vidéos s’affichent avec les images dans la même grille.</div>
                 </div>
             </div>
         </div>

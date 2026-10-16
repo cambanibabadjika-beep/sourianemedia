@@ -47,6 +47,21 @@ $annee = date('Y');
         <div class="pied-site__bas">
             <span>© <?= e($annee) ?> <?= e(APP_NAME) ?>. Tous droits réservés.</span>
             <span>Plateforme de publicité extérieure connectée · Sénégal</span>
+            <?php
+            $langues = langues_disponibles();
+            if (count($langues) > 1):
+                $active = langue_active();
+                $urlBase = strtok((string) ($_SERVER['REQUEST_URI'] ?? '/'), '?');
+            ?>
+                <form method="get" action="<?= e($urlBase) ?>" class="selecteur-langue">
+                    <label for="selecteur-langue" class="visuellement-cache">Langue</label>
+                    <select id="selecteur-langue" name="lang" onchange="this.form.submit()">
+                        <?php foreach ($langues as $code => $nom): ?>
+                            <option value="<?= e($code) ?>"<?= $active === $code ? ' selected' : '' ?>><?= e($nom) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+            <?php endif; ?>
         </div>
     </div>
 </footer>

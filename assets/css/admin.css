@@ -434,3 +434,95 @@ body.admin {
         border: 1px solid #ccc !important;
     }
 }
+
+/* --------------------------------------------------------------------------
+   Vérification en deux étapes (ch. 8)
+   -------------------------------------------------------------------------- */
+
+/* Champ de code : chiffres largement espacés, pour se relire d’un seul coup
+   d’œil avant de valider. */
+.saisie--code {
+    font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+    font-size: 1.15rem;
+    letter-spacing: .3em;
+    text-align: center;
+    max-width: 200px;
+}
+
+/* Gestes d’enrôlement, dans l’ordre */
+.etapes {
+    margin: 0 0 20px 18px;
+    padding: 0;
+    font-size: .88rem;
+    line-height: 1.6;
+    color: var(--gris-600);
+}
+.etapes li { margin-bottom: 6px; }
+
+/* QR code d’enrôlement. La taille est bornée par la carte et non par le
+   dessin : un QR dense produit un SVG large, qui déborderait sinon. */
+.qr-enrolement {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+.qr-enrolement svg {
+    width: 100%;
+    max-width: 260px;
+    height: auto;
+    padding: 8px;
+    background: #fff;
+    border: 1px solid var(--gris-200);
+    border-radius: var(--rayon-sm);
+}
+
+/* Clé partagée, à recopier si le QR code ne peut pas être scanné */
+.cle-secret {
+    display: block;
+    padding: 12px 14px;
+    background: var(--gris-100);
+    border: 1px solid var(--gris-200);
+    border-radius: var(--rayon-sm);
+    font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+    font-size: .95rem;
+    letter-spacing: .12em;
+    text-align: center;
+    word-break: break-all;
+    color: var(--violet-900);
+}
+
+/* Voie de recours — code de secours, repliée par défaut */
+.recours {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--gris-200);
+}
+.recours > summary {
+    cursor: pointer;
+    font-size: .86rem;
+    color: var(--violet-700);
+}
+.recours > p { margin: 10px 0 12px; }
+
+/* Codes de secours, remis une seule fois */
+.codes-secours {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin: 0 0 18px;
+    padding: 0;
+    list-style: none;
+}
+.codes-secours li {
+    padding: 10px 12px;
+    background: var(--gris-100);
+    border: 1px dashed var(--gris-300);
+    border-radius: var(--rayon-sm);
+    font-size: 1rem;
+    letter-spacing: .1em;
+    text-align: center;
+    color: var(--violet-900);
+}
+
+/* Panneau mis en avant : les codes de secours neufs */
+.panneau--accent { border-color: var(--violet-300); }

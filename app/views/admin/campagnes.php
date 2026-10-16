@@ -79,6 +79,12 @@ use Souriane\Core\Icone;
                                         <?= Icone::svg('suivant') ?>
                                         <span class="sr-only">Ouvrir</span>
                                     </a>
+                                    <!-- Rapport de fin de campagne (EF-F06) -->
+                                    <a class="btn btn--contour btn--petit" target="_blank" rel="noopener"
+                                       href="<?= e(url('admin/campagnes/' . $campagne['id'] . '/rapport')) ?>">
+                                        <?= Icone::svg('graphique') ?>
+                                        <span class="sr-only">Rapport de fin de campagne</span>
+                                    </a>
                                 </div>
                             </td>
                         </tr>

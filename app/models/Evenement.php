@@ -16,6 +16,29 @@ final class Evenement
         'clic_reseau', 'clic_rester_informe', 'installation', 'abonnement', 'desabonnement',
     ];
 
+    /**
+     * Indicateurs réellement mesurés, dans l’ordre de présentation du
+     * chapitre 5.7.
+     *
+     * La définition est unique et vit ici : le tableau de bord, le rapport de
+     * fin de campagne et son export lus depuis la même source ne peuvent pas
+     * afficher des libellés ou des clés divergents. Les clés correspondent
+     * exactement aux alias renvoyés par `statistiquesCampagne()`.
+     */
+    public const INDICATEURS_MESURES = [
+        ['cle' => 'scans_bruts',         'libelle' => 'Scans bruts',                   'icone' => 'qr'],
+        ['cle' => 'visiteurs_uniques',   'libelle' => 'Visiteurs uniques',             'icone' => 'utilisateurs'],
+        ['cle' => 'affichages',          'libelle' => 'Pages affichées',               'icone' => 'site'],
+        ['cle' => 'clics_appel',         'libelle' => 'Clics sur « Appeler »',         'icone' => 'telephone'],
+        ['cle' => 'clics_whatsapp',      'libelle' => 'Clics WhatsApp',                'icone' => 'whatsapp'],
+        ['cle' => 'clics_itineraire',    'libelle' => 'Demandes d’itinéraire',         'icone' => 'itineraire'],
+        ['cle' => 'clic_reseau',         'libelle' => 'Clics réseaux sociaux',         'icone' => 'partage'],
+        ['cle' => 'clic_rester_informe', 'libelle' => 'Ouvertures « Rester informé »', 'icone' => 'cloche'],
+        ['cle' => 'installations',       'libelle' => 'Installations',                 'icone' => 'telecharger'],
+        ['cle' => 'abonnements',         'libelle' => 'Abonnements',                   'icone' => 'coche-cercle'],
+        ['cle' => 'desabonnements',      'libelle' => 'Désabonnements',                'icone' => 'fermer'],
+    ];
+
     public static function enregistrer(array $donnees): int
     {
         if (!in_array($donnees['type'] ?? '', self::TYPES, true)) {
@@ -135,6 +158,32 @@ final class Evenement
                AND date >= DATE_SUB(CURDATE(), INTERVAL {$jours} DAY)
              GROUP BY DATE(date) ORDER BY jour ASC",
             ['id' => $campagneId]
+        );
+    }
+
+    /**
+     * Série quotidienne des scans sur une période explicite.
+     *
+     * `serieQuotidienne()` compte à rebours depuis aujourd’hui : c’est ce qu’il
+     * faut au tableau de bord, qui annonce « les 30 derniers jours ». Le rapport
+     * de fin de campagne, lui, doit couvrir la période de la campagne — une
+     * campagne terminée il y a trois mois n’y produirait sinon aucune ligne, et
+     * une campagne en cours verrait sa fenêtre décalée par rapport à son propre
+     * début. D’où cette seconde lecture, bornée par les dates réelles.
+     */
+    public static function seriePeriode(int $campagneId, string $debut, string $fin): array
+    {
+        return Db::instance()->select(
+            "SELECT DATE(date) AS jour,
+                    SUM(type = 'scan') AS scans,
+                    SUM(type = 'clic_appel') AS appels,
+                    SUM(type = 'clic_whatsapp') AS whatsapp
+             FROM evenements
+             WHERE campagne_id = :id
+               AND date >= :debut
+               AND date < DATE_ADD(:fin, INTERVAL 1 DAY)
+             GROUP BY DATE(date) ORDER BY jour ASC",
+            ['id' => $campagneId, 'debut' => $debut, 'fin' => $fin]
         );
     }
 

@@ -70,8 +70,9 @@ $menu = [
     [
         'titre' => 'Système',
         'liens' => [
-            ['cle' => 'utilisateurs', 'libelle' => 'Utilisateurs', 'url' => url('admin/utilisateurs'), 'icone' => 'verrou'],
+            ['cle' => 'utilisateurs', 'libelle' => 'Utilisateurs', 'url' => url('admin/utilisateurs'), 'icone' => 'utilisateurs'],
             ['cle' => 'parametres',   'libelle' => 'Paramètres',   'url' => url('admin/parametres'),   'icone' => 'reglages'],
+            ['cle' => 'securite',     'libelle' => 'Sécurité du compte', 'url' => url('admin/securite'), 'icone' => 'verrou'],
         ],
     ],
 ];

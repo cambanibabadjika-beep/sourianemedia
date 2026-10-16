@@ -102,6 +102,23 @@ final class Notification
         );
     }
 
+    /**
+     * Dernières notifications envoyées pour un annonceur (EF-E10).
+     *
+     * @return array{int: array}
+     */
+    public static function dernieresEnvoyees(int $annonceurId, int $limite = 10): array
+    {
+        return Db::instance()->select(
+            'SELECT id, titre, corps, icone, adresse_ouverture, envoyee_le
+             FROM notifications
+             WHERE annonceur_id = :aid AND statut = \'envoyee\'
+             ORDER BY envoyee_le DESC
+             LIMIT ' . max(1, min(50, $limite)),
+            ['aid' => $annonceurId]
+        );
+    }
+
     /** Crée les lignes d’envoi pour les abonnés actifs. */
     public static function preparerEnvois(int $notificationId, int $annonceurId): int
     {
