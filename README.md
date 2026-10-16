@@ -40,12 +40,13 @@ pointer sur ce dossier : `index.php` est le seul point d'entrée public.
 ### 2.2 Base de données
 
 ```bash
-mysql -u root -p < sql/souriane.sql     # structure : 16 tables, 3 vues
-mysql -u root -p souriane < sql/donnees_demo.sql   # jeu de démonstration
+mysql -u root -p < sql/souriane.sql     # structure (18 tables, 2 vues) + démonstration
 ```
 
-Le second script est facultatif mais recommandé pour découvrir la plateforme :
-trois annonceurs, trois campagnes, cinq panneaux et trois comptes.
+Ce fichier unique contient la structure, les vues et un jeu de démonstration :
+trois annonceurs, trois campagnes, cinq panneaux et trois comptes. Pour une
+installation en production, supprimer la dernière section
+« JEU DE DONNÉES DE DÉMONSTRATION » avant l'import.
 
 ### 2.3 Configuration
 
