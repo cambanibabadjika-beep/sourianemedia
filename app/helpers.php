@@ -39,6 +39,19 @@ function url_page(string $adresseCourte): string
     return url($adresseCourte);
 }
 
+/** URL publique vers une photo téléversée ou une image distante. */
+function url_photo(?string $chemin): string
+{
+    if (empty($chemin)) {
+        return '';
+    }
+    if (str_starts_with($chemin, 'http://') || str_starts_with($chemin, 'https://')) {
+        return $chemin;
+    }
+
+    return url(ltrim($chemin, '/'));
+}
+
 /** Formate un prix en francs CFA. */
 function fcfa(float|int|string|null $montant): string
 {

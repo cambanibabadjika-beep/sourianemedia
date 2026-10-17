@@ -34,48 +34,104 @@ if ($utilisateur !== null) {
     }
 }
 
-/** Menu de l’administration. */
-$menu = [
+$role        = (string) ($utilisateur['role'] ?? 'regie');
+$roleLibelle = \Souriane\Models\Utilisateur::ROLES[$role] ?? $role;
+
+// Informations annonceur rattaché (si profil annonceur)
+$pageAnnonceurSlug = null;
+$annonceurNom      = null;
+if ($role === 'annonceur' && !empty($utilisateur['annonceur_id'])) {
+    $annId = (int) $utilisateur['annonceur_id'];
+    $pageAssociee = \Souriane\Models\Page::parAnnonceur($annId);
+    if ($pageAssociee !== null && !empty($pageAssociee['adresse_courte'])) {
+        $pageAnnonceurSlug = (string) $pageAssociee['adresse_courte'];
+    }
+    $ann = \Souriane\Models\Annonceur::trouver($annId);
+    if ($ann !== null) {
+        $annonceurNom = (string) ($ann['nom'] ?? '');
+        if ($pageAnnonceurSlug === null && !empty($ann['adresse_courte'])) {
+            $pageAnnonceurSlug = (string) $ann['adresse_courte'];
+        }
+    }
+}
+
+/**
+ * Définition complète du menu de l’administration avec les rôles autorisés.
+ *
+ * Rôles :
+ *   regie     → Régie publicitaire (accès complet)
+ *   agent     → Agent terrain (parc, poses, QR codes, lecture des campagnes)
+ *   annonceur → Annonceur (tableau de bord, statistiques, ses campagnes, sa page publique)
+ */
+$menuComplet = [
     [
         'titre' => 'Pilotage',
         'liens' => [
-            ['cle' => 'tableau-de-bord', 'libelle' => 'Tableau de bord', 'url' => url('admin'), 'icone' => 'graphique'],
-            ['cle' => 'statistiques',    'libelle' => 'Statistiques',    'url' => url('admin/statistiques'), 'icone' => 'coche-cercle'],
+            ['cle' => 'tableau-de-bord', 'libelle' => 'Tableau de bord', 'url' => url('admin'), 'icone' => 'graphique', 'roles' => ['regie', 'agent', 'annonceur']],
+            ['cle' => 'statistiques',    'libelle' => 'Statistiques',    'url' => url('admin/statistiques'), 'icone' => 'coche-cercle', 'roles' => ['regie', 'agent', 'annonceur']],
         ],
     ],
     [
-        'titre' => 'Commercial',
+        'titre' => $role === 'annonceur' ? 'Campagnes' : 'Commercial',
         'liens' => [
-            ['cle' => 'annonceurs', 'libelle' => 'Annonceurs', 'url' => url('admin/annonceurs'), 'icone' => 'utilisateurs'],
-            ['cle' => 'demandes',   'libelle' => 'Demandes',   'url' => url('admin/demandes'),   'icone' => 'courriel'],
-            ['cle' => 'campagnes',  'libelle' => 'Campagnes',  'url' => url('admin/campagnes'),  'icone' => 'etincelle'],
-            ['cle' => 'panneaux',   'libelle' => 'Panneaux',   'url' => url('admin/panneaux'),   'icone' => 'panneau'],
+            ['cle' => 'annonceurs', 'libelle' => 'Annonceurs', 'url' => url('admin/annonceurs'), 'icone' => 'utilisateurs', 'roles' => ['regie']],
+            ['cle' => 'demandes',   'libelle' => 'Demandes',   'url' => url('admin/demandes'),   'icone' => 'courriel', 'roles' => ['regie']],
+            ['cle' => 'campagnes',  'libelle' => $role === 'annonceur' ? 'Mes campagnes' : 'Campagnes', 'url' => url('admin/campagnes'), 'icone' => 'etincelle', 'roles' => ['regie', 'agent', 'annonceur']],
+            ['cle' => 'panneaux',   'libelle' => 'Panneaux',   'url' => url('admin/panneaux'),   'icone' => 'panneau', 'roles' => ['regie', 'agent']],
         ],
     ],
     [
         'titre' => 'Diffusion',
         'liens' => [
-            ['cle' => 'pages',         'libelle' => 'Pages publiques', 'url' => url('admin/pages'), 'icone' => 'site'],
-            ['cle' => 'codes',         'libelle' => 'QR codes',        'url' => url('admin/codes'), 'icone' => 'qr'],
-            ['cle' => 'notifications', 'libelle' => 'Notifications',   'url' => url('admin/notifications'), 'icone' => 'cloche'],
+            ['cle' => 'pages',         'libelle' => 'Pages publiques', 'url' => url('admin/pages'), 'icone' => 'site', 'roles' => ['regie']],
+            ['cle' => 'codes',         'libelle' => 'QR codes',        'url' => url('admin/codes'), 'icone' => 'qr', 'roles' => ['regie', 'agent']],
+            ['cle' => 'notifications', 'libelle' => 'Notifications',   'url' => url('admin/notifications'), 'icone' => 'cloche', 'roles' => ['regie']],
         ],
     ],
     [
-        'titre' => 'Exploitation',
+        'titre' => $role === 'annonceur' ? 'Terrain' : 'Exploitation',
         'liens' => [
-            ['cle' => 'poses',   'libelle' => 'Preuves de pose', 'url' => url('admin/poses'),   'icone' => 'photo'],
-            ['cle' => 'journal', 'libelle' => 'Journal',         'url' => url('admin/journal'), 'icone' => 'archive'],
+            ['cle' => 'poses',   'libelle' => 'Preuves de pose', 'url' => url('admin/poses'),   'icone' => 'photo', 'roles' => ['regie', 'agent', 'annonceur']],
+            ['cle' => 'journal', 'libelle' => 'Journal',         'url' => url('admin/journal'), 'icone' => 'archive', 'roles' => ['regie']],
         ],
     ],
     [
-        'titre' => 'Système',
+        'titre' => $role === 'annonceur' ? 'Compte' : 'Système',
         'liens' => [
-            ['cle' => 'utilisateurs', 'libelle' => 'Utilisateurs', 'url' => url('admin/utilisateurs'), 'icone' => 'utilisateurs'],
-            ['cle' => 'parametres',   'libelle' => 'Paramètres',   'url' => url('admin/parametres'),   'icone' => 'reglages'],
-            ['cle' => 'securite',     'libelle' => 'Sécurité du compte', 'url' => url('admin/securite'), 'icone' => 'verrou'],
+            ['cle' => 'utilisateurs', 'libelle' => 'Utilisateurs', 'url' => url('admin/utilisateurs'), 'icone' => 'utilisateurs', 'roles' => ['regie']],
+            ['cle' => 'parametres',   'libelle' => 'Paramètres',   'url' => url('admin/parametres'),   'icone' => 'reglages', 'roles' => ['regie']],
+            ['cle' => 'securite',     'libelle' => 'Sécurité du compte', 'url' => url('admin/securite'), 'icone' => 'verrou', 'roles' => ['regie', 'agent', 'annonceur']],
         ],
     ],
 ];
+
+// Si l'annonceur possède une page publique, on insère un accès direct
+if ($role === 'annonceur' && $pageAnnonceurSlug !== null) {
+    $menuComplet[2]['liens'][] = [
+        'cle'     => 'ma-page',
+        'libelle' => 'Ma page publique',
+        'url'     => url_page($pageAnnonceurSlug),
+        'icone'   => 'site',
+        'externe' => true,
+        'roles'   => ['annonceur'],
+    ];
+}
+
+/** Filtrage du menu selon le rôle de l'utilisateur connecté */
+$menu = [];
+foreach ($menuComplet as $groupe) {
+    $liensFiltres = [];
+    foreach ($groupe['liens'] as $lien) {
+        $rolesAutorises = $lien['roles'] ?? ['regie'];
+        if (in_array($role, $rolesAutorises, true)) {
+            $liensFiltres[] = $lien;
+        }
+    }
+    if ($liensFiltres !== []) {
+        $groupe['liens'] = $liensFiltres;
+        $menu[] = $groupe;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -108,16 +164,36 @@ $menu = [
             ?>
         </div>
 
+        <?php if ($utilisateur !== null): ?>
+            <div class="admin-laterale__profil">
+                <span class="admin-laterale__badge-role admin-laterale__badge-role--<?= e($role) ?>">
+                    <?= e($roleLibelle) ?>
+                </span>
+                <?php if ($role === 'annonceur' && !empty($annonceurNom)): ?>
+                    <div class="admin-laterale__entite" title="<?= e($annonceurNom) ?>">
+                        <?= e($annonceurNom) ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
         <nav class="admin-nav" aria-label="Navigation de l’administration">
             <?php foreach ($menu as $groupe): ?>
                 <div class="admin-nav__groupe">
                     <div class="admin-nav__titre"><?= e($groupe['titre']) ?></div>
                     <?php foreach ($groupe['liens'] as $lien): ?>
-                        <?php $actif = $lien['cle'] === $section; ?>
-                        <a href="<?= e($lien['url']) ?>"<?= $actif ? ' class="actif" aria-current="page"' : '' ?>>
+                        <?php
+                        $actif   = $lien['cle'] === $section;
+                        $externe = !empty($lien['externe']);
+                        ?>
+                        <a href="<?= e($lien['url']) ?>"<?= $actif ? ' class="actif" aria-current="page"' : '' ?><?= $externe ? ' target="_blank" rel="noopener"' : '' ?>>
                             <?= Icone::svg($lien['icone']) ?>
                             <span><?= e($lien['libelle']) ?></span>
-                            <?php if (!empty($compteurs[$lien['cle']])): ?>
+                            <?php if ($externe): ?>
+                                <span class="admin-nav__externe" title="Ouvrir dans un nouvel onglet">
+                                    <?= Icone::svg('lien-externe') ?>
+                                </span>
+                            <?php elseif (!empty($compteurs[$lien['cle']])): ?>
                                 <span class="admin-nav__badge"><?= e((string) $compteurs[$lien['cle']]) ?></span>
                             <?php endif; ?>
                         </a>
@@ -125,6 +201,7 @@ $menu = [
                 </div>
             <?php endforeach; ?>
         </nav>
+
 
         <div class="admin-laterale__pied">
             <div style="margin-bottom:8px">
@@ -142,20 +219,24 @@ $menu = [
 
     <div class="admin-principal">
         <header class="admin-entete">
-            <div class="pile">
+            <div class="admin-entete__gauche">
                 <button type="button" class="btn btn--contour btn--petit bouton-menu" id="bouton-menu" aria-label="Ouvrir le menu" aria-controls="admin-laterale">
                     <?= Icone::svg('menu') ?>
                 </button>
-                <h1 class="admin-entete__titre"><?= e($titrePage) ?></h1>
+                <h1 class="admin-entete__titre" title="<?= e($titrePage) ?>"><?= e($titrePage) ?></h1>
             </div>
 
             <div class="admin-entete__actions">
-                <?= $actionsEntete ?>
+                <?php if ($actionsEntete !== ''): ?>
+                    <div class="admin-entete__action-specifique">
+                        <?= $actionsEntete ?>
+                    </div>
+                <?php endif; ?>
                 <?php require __DIR__ . '/../partials/bascule-theme.php'; ?>
                 <?php if ($utilisateur !== null): ?>
                     <div class="admin-entete__utilisateur">
-                        <span class="avatar" aria-hidden="true"><?= e($initiales !== '' ? $initiales : 'SA') ?></span>
-                        <span>
+                        <span class="avatar" aria-hidden="true" title="<?= e((string) $utilisateur['nom']) ?> (<?= e(\Souriane\Models\Utilisateur::ROLES[$utilisateur['role']] ?? $utilisateur['role']) ?>)"><?= e($initiales !== '' ? $initiales : 'SA') ?></span>
+                        <span class="admin-entete__utilisateur-texte">
                             <strong style="display:block;line-height:1.2"><?= e((string) $utilisateur['nom']) ?></strong>
                             <span class="texte-petit"><?= e(\Souriane\Models\Utilisateur::ROLES[$utilisateur['role']] ?? $utilisateur['role']) ?></span>
                         </span>

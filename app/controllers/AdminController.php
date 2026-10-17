@@ -39,6 +39,7 @@ use Souriane\Models\Visite;
 use Souriane\Services\DiffusionService;
 use Souriane\Services\QrService;
 use Souriane\Services\SecondFacteur;
+use Souriane\Services\UploadService;
 
 final class AdminController
 {
@@ -53,7 +54,7 @@ final class AdminController
         'pages'           => ['regie'],
         'codes'           => ['regie', 'agent'],
         'notifications'   => ['regie'],
-        'poses'           => ['regie', 'agent'],
+        'poses'           => ['regie', 'agent', 'annonceur'],
         'journal'         => ['regie'],
         'utilisateurs'    => ['regie'],
         'parametres'      => ['regie'],
@@ -555,6 +556,17 @@ final class AdminController
             }
         }
 
+        // Preuves de pose associées à cette campagne
+        $poses = $campagne !== null ? Db::instance()->select(
+            'SELECT po.*, p.reference, p.libelle, p.ville, p.format, u.nom AS agent_nom
+             FROM poses po
+             JOIN panneaux p ON p.id = po.panneau_id
+             LEFT JOIN utilisateurs u ON u.id = po.agent_id
+             WHERE po.campagne_id = :cid
+             ORDER BY po.horodatage DESC',
+            ['cid' => (int) $campagne['id']]
+        ) : [];
+
         return $this->vue('admin/campagne-form', [
             'titrePage'   => $campagne === null ? 'Nouvelle campagne' : 'Campagne « ' . $campagne['nom'] . ' »',
             'section'     => 'campagnes',
@@ -565,6 +577,7 @@ final class AdminController
             'associes'    => $campagne !== null ? Campagne::panneaux((int) $campagne['id']) : [],
             'disponibilites' => $disponibilites,
             'codes'       => $campagne !== null ? CodeCourt::tous(['campagne_id' => (int) $campagne['id']]) : [],
+            'poses'       => $poses,
             'stats'       => $campagne !== null ? Evenement::statistiquesCampagne((int) $campagne['id']) : null,
             'lectureSeule' => $lectureSeule,
             'pastilles'   => $this->pastilles(),
@@ -1407,8 +1420,10 @@ final class AdminController
         }
 
         $filtre = $request->string('controle');
+        $estAnnonceur = Auth::role() === 'annonceur';
+        $annonceurId  = $this->annonceurCourant();
 
-        $sql = 'SELECT po.*, p.reference, p.libelle, p.ville, c.nom AS campagne_nom,
+        $sql = 'SELECT po.*, p.reference, p.libelle, p.ville, p.format, c.nom AS campagne_nom,
                        a.nom AS annonceur_nom, u.nom AS agent_nom
                 FROM poses po
                 JOIN panneaux p ON p.id = po.panneau_id
@@ -1417,17 +1432,35 @@ final class AdminController
                 LEFT JOIN utilisateurs u ON u.id = po.agent_id
                 WHERE 1=1';
         $params = [];
+
+        if ($estAnnonceur) {
+            $sql .= ' AND c.annonceur_id = :mon_aid';
+            $params['mon_aid'] = $annonceurId;
+        }
+
         if (in_array($filtre, ['non_fait', 'conforme', 'non_conforme'], true)) {
             $sql .= ' AND (po.controle_15j = :c OR po.controle_30j = :c)';
             $params['c'] = $filtre;
         }
 
+        $campagnesFiltre = $estAnnonceur
+            ? Campagne::tous(['annonceur_id' => $annonceurId])
+            : Db::instance()->select("SELECT * FROM campagnes WHERE statut IN ('en_cours', 'reservee') ORDER BY date_debut ASC");
+
+        $panneauxCampagnes = Db::instance()->select(
+            'SELECT cp.campagne_id, cp.panneau_id, p.reference, p.libelle, p.ville
+             FROM campagne_panneaux cp
+             JOIN panneaux p ON p.id = cp.panneau_id
+             ORDER BY p.ville ASC, p.reference ASC'
+        );
+
         return $this->vue('admin/poses', [
-            'titrePage' => 'Preuves de pose',
+            'titrePage' => $estAnnonceur ? 'Preuves de pose de vos panneaux' : 'Preuves de pose',
             'section'   => 'poses',
             'poses'     => Db::instance()->select($sql . ' ORDER BY po.horodatage DESC LIMIT 200', $params),
             'controle'  => $filtre,
-            'campagnes' => Campagne::tous(['statut' => 'en_cours']),
+            'campagnes' => $campagnesFiltre,
+            'panneauxCampagnes' => $panneauxCampagnes,
             'pastilles' => $this->pastilles(),
             'actionsEntete' => Auth::aRole('regie', 'agent')
                 ? '<button type="button" class="btn btn--primaire btn--petit" data-ouvrir-dialogue="dialogue-pose">'
@@ -1442,6 +1475,9 @@ final class AdminController
         if ($refus = $this->garde('poses')) {
             return $refus;
         }
+        if (!Auth::aRole('regie', 'agent')) {
+            return $this->refuse();
+        }
         if ($refus = Csrf::verifier($request)) {
             return $refus;
         }
@@ -1449,11 +1485,30 @@ final class AdminController
         $panneauId  = $request->int('panneau_id');
         $campagneId = $request->int('campagne_id');
         $photo      = $request->string('photo');
+        $retour     = $request->string('retour');
+        $cibleUrl   = $retour !== '' ? $retour : url('admin/poses');
+
+        // Gestion du fichier photo téléversé
+        $fichierPhoto = $_FILES['photo_fichier'] ?? null;
+        if ($fichierPhoto !== null && !empty($fichierPhoto['name']) && ($fichierPhoto['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            try {
+                $photo = UploadService::enregistrerPhotoPose($fichierPhoto);
+            } catch (\Exception $e) {
+                Flash::erreur($e->getMessage());
+
+                return Response::redirect($cibleUrl);
+            }
+        }
 
         if ($panneauId <= 0 || $campagneId <= 0 || $photo === '') {
-            Flash::erreur('Panneau, campagne et photo sont obligatoires.');
+            Flash::erreur('Panneau, campagne et photo de preuve sont obligatoires.');
 
-            return Response::redirect(url('admin/poses'));
+            return Response::redirect($cibleUrl);
+        }
+
+        $horodatage = $request->string('horodatage');
+        if ($horodatage === '' || strtotime($horodatage) === false) {
+            $horodatage = date('Y-m-d H:i:s');
         }
 
         Db::instance()->insert('poses', [
@@ -1462,7 +1517,7 @@ final class AdminController
             'photo'        => $photo,
             'latitude'     => $request->string('latitude') !== '' ? (float) $request->string('latitude') : null,
             'longitude'    => $request->string('longitude') !== '' ? (float) $request->string('longitude') : null,
-            'horodatage'   => date('Y-m-d H:i:s'),
+            'horodatage'   => $horodatage,
             'agent_id'     => Auth::id(),
             'controle_15j' => 'non_fait',
             'controle_30j' => 'non_fait',
@@ -1470,10 +1525,11 @@ final class AdminController
         ]);
 
         journal_operation(Auth::id(), 'pose', 'poses', $panneauId, 'Preuve de pose enregistrée', $request->ip());
-        Flash::succes('Preuve de pose enregistrée. Les contrôles à 15 et 30 jours sont programmés.');
+        Flash::succes('Preuve de pose enregistrée. L’annonceur peut maintenant visualiser la photo de son panneau.');
 
-        return Response::redirect(url('admin/poses'));
+        return Response::redirect($cibleUrl);
     }
+
 
     /** GET /admin/journal */
     public function journal(Request $request): Response
@@ -1857,9 +1913,15 @@ final class AdminController
     private function pastilles(): array
     {
         $db = Db::instance();
+        $annonceurId = Auth::role() === 'annonceur' ? $this->annonceurCourant() : 0;
+
+        $campagnesSql = $annonceurId > 0
+            ? "SELECT COUNT(*) FROM campagnes WHERE statut IN ('brouillon','reservee') AND annonceur_id = :aid"
+            : "SELECT COUNT(*) FROM campagnes WHERE statut IN ('brouillon','reservee')";
+        $campagnesParams = $annonceurId > 0 ? ['aid' => $annonceurId] : [];
 
         return [
-            'campagnes'     => (int) $db->selectValue("SELECT COUNT(*) FROM campagnes WHERE statut IN ('brouillon','reservee')", [], 0),
+            'campagnes'     => (int) $db->selectValue($campagnesSql, $campagnesParams, 0),
             'panneaux'      => (int) $db->selectValue("SELECT COUNT(*) FROM panneaux WHERE statut = 'maintenance'", [], 0),
             'notifications' => (int) $db->selectValue("SELECT COUNT(*) FROM notifications WHERE statut = 'programmee'", [], 0),
             'poses'         => (int) $db->selectValue("SELECT COUNT(*) FROM poses WHERE controle_15j = 'non_fait'", [], 0),
@@ -1867,6 +1929,7 @@ final class AdminController
             'demandes'      => Demande::compterNouvelles(),
         ];
     }
+
 
     /** Horaires saisis dans le formulaire annonceur. */
     private function lireHoraires(Request $request): array

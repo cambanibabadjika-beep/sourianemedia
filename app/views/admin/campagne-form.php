@@ -290,7 +290,102 @@ $mesure = $stats['mesure'] ?? [];
     </div>
 <?php endif; ?>
 
-<!-- 4. QR codes ------------------------------------------------------------- -->
+<!-- 4. Preuves de pose & photos d'installation ------------------------------ -->
+<?php if ($campagne !== null): ?>
+    <div class="panneau" id="preuves-poses">
+        <div class="panneau__entete">
+            <h2 class="panneau__titre"><?= Icone::svg('photo') ?> Preuves de pose & photos terrain</h2>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span class="texte-petit"><?= e((string) count($poses)) ?> photo(s) terrain</span>
+                <?php if (in_array(\Souriane\Core\Auth::role(), ['regie', 'agent'], true)): ?>
+                    <button type="button" class="btn btn--primaire btn--petit" data-ouvrir-dialogue="dialogue-pose-campagne">
+                        <?= Icone::svg('ajouter') ?> Ajouter une photo de pose
+                    </button>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="panneau__corps">
+            <?php if ($poses === []): ?>
+                <div class="encart" style="margin:0">
+                    Aucune photo d’installation enregistrée pour cette campagne pour le moment.
+                    Dès que nos équipes effectuent la pose des affiches sur le terrain, leurs photos horodatées
+                    avec géolocalisation apparaîtront ici.
+                </div>
+            <?php else: ?>
+                <div class="grille-poses-campagne">
+                    <?php foreach ($poses as $p): ?>
+                        <?php
+                        $photoUrl = !empty($p['photo']) ? url_photo((string) $p['photo']) : '';
+                        $gpsDispo = !empty($p['latitude']) && !empty($p['longitude']);
+                        $lienGps = $gpsDispo
+                            ? 'https://www.google.com/maps?q=' . rawurlencode($p['latitude'] . ',' . $p['longitude'])
+                            : null;
+                        ?>
+                        <article class="carte-pose">
+                            <div class="carte-pose__media"
+                                 data-ouvrir-zoom-campagne
+                                 data-photo="<?= e($photoUrl) ?>"
+                                 data-panneau="<?= e((string) $p['reference'] . ' — ' . $p['libelle']) ?>"
+                                 data-ville="<?= e((string) ($p['ville'] ?? '')) ?>"
+                                 data-format="<?= e((string) ($p['format'] ?? '')) ?>"
+                                 data-date="<?= e(date_fr((string) $p['horodatage'], true)) ?>"
+                                 data-agent="<?= e((string) ($p['agent_nom'] ?? 'Équipe terrain')) ?>"
+                                 data-lat="<?= e((string) ($p['latitude'] ?? '')) ?>"
+                                 data-lng="<?= e((string) ($p['longitude'] ?? '')) ?>"
+                                 data-note="<?= e((string) ($p['note'] ?? '')) ?>"
+                                 data-c15="<?= e((string) $p['controle_15j']) ?>"
+                                 data-c30="<?= e((string) $p['controle_30j']) ?>"
+                                 title="Cliquer pour voir la photo en grand">
+                                <?php if ($photoUrl !== ''): ?>
+                                    <img src="<?= e($photoUrl) ?>" alt="Pose <?= e((string) $p['reference']) ?>" loading="lazy">
+                                <?php else: ?>
+                                    <div style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--gris-400);">
+                                        <?= Icone::svg('photo') ?>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="carte-pose__badge-date">
+                                    <?= e(date_fr((string) $p['horodatage'], true)) ?>
+                                </div>
+                            </div>
+                            <div class="carte-pose__corps">
+                                <h3 class="carte-pose__titre">
+                                    <?= e((string) $p['reference']) ?> · <?= e((string) $p['libelle']) ?>
+                                </h3>
+                                <div class="carte-pose__meta">
+                                    <span><?= e((string) ($p['format'] ?? '')) ?><?= !empty($p['ville']) ? ' · ' . e($p['ville']) : '' ?></span>
+                                    <span>Posé par : <?= e((string) ($p['agent_nom'] ?? 'Équipe terrain')) ?></span>
+                                    <?php if ($gpsDispo): ?>
+                                        <span>
+                                            <a href="<?= e($lienGps) ?>" target="_blank" rel="noopener noreferrer" style="text-decoration:underline;">
+                                                GPS : <?= e(number_format((float) $p['latitude'], 4, '.', '')) ?>, <?= e(number_format((float) $p['longitude'], 4, '.', '')) ?>
+                                            </a>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if (!empty($p['note'])): ?>
+                                    <div class="carte-pose__note">
+                                        « <?= e((string) $p['note']) ?> »
+                                    </div>
+                                <?php endif; ?>
+                                <div class="carte-pose__statuts">
+                                    <span class="etat <?= $p['controle_15j'] === 'conforme' ? 'etat--conforme' : ($p['controle_15j'] === 'non_conforme' ? 'etat--annulee' : 'etat--reservee') ?>">
+                                        15 j : <?= e($p['controle_15j'] === 'conforme' ? 'Conforme' : ($p['controle_15j'] === 'non_conforme' ? 'Non conforme' : 'À faire')) ?>
+                                    </span>
+                                    <span class="etat <?= $p['controle_30j'] === 'conforme' ? 'etat--conforme' : ($p['controle_30j'] === 'non_conforme' ? 'etat--annulee' : 'etat--reservee') ?>">
+                                        30 j : <?= e($p['controle_30j'] === 'conforme' ? 'Conforme' : ($p['controle_30j'] === 'non_conforme' ? 'Non conforme' : 'À faire')) ?>
+                                    </span>
+                                </div>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+<?php endif; ?>
+
+<!-- 5. QR codes ------------------------------------------------------------- -->
 <div class="panneau">
     <div class="panneau__entete">
         <h2 class="panneau__titre"><?= Icone::svg('qr') ?> QR codes de la campagne</h2>
@@ -331,8 +426,9 @@ $mesure = $stats['mesure'] ?? [];
     <?php endif; ?>
 </div>
 
-<!-- 5. Statistiques --------------------------------------------------------- -->
+<!-- 6. Statistiques --------------------------------------------------------- -->
 <?php if ($stats !== null): ?>
+    <?php $mesure = $stats; ?>
     <div class="panneau">
         <div class="panneau__entete">
             <h2 class="panneau__titre"><?= Icone::svg('graphique') ?> Résultats de la campagne</h2>
@@ -365,3 +461,253 @@ $mesure = $stats['mesure'] ?? [];
         </div>
     </div>
 <?php endif; ?>
+
+<!-- Dialogue d'agrandissement photo de la campagne --------------------------- -->
+<dialog id="dialogue-zoom-campagne" class="dialogue-zoom">
+    <div style="position:relative; background:#0b0716; text-align:center;">
+        <img id="zoom-img-campagne" class="dialogue-zoom__image" src="" alt="Preuve de pose">
+        <button type="button" class="btn btn--contour btn--petit" data-fermer-dialogue
+                style="position:absolute; top:12px; right:12px; background:rgba(0,0,0,.65); color:#fff; border-color:rgba(255,255,255,.3); z-index:2">
+            ✕ Fermer
+        </button>
+    </div>
+    <div class="dialogue-zoom__corps">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+            <div>
+                <h3 id="zoom-panneau-campagne" style="margin:0 0 4px; font-family:var(--police-titre); font-size:1.15rem; color:var(--charbon);"></h3>
+                <div id="zoom-meta-campagne" class="texte-petit" style="color:var(--gris-600);"></div>
+            </div>
+            <div id="zoom-statuts-campagne" class="carte-pose__statuts"></div>
+        </div>
+
+        <div id="zoom-note-conteneur-campagne" style="display:none;" class="carte-pose__note">
+            <strong>Rapport d’installation :</strong> <span id="zoom-note-campagne"></span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding-top:10px; border-top:1px solid var(--bordure); flex-wrap:wrap; gap:12px;">
+            <div id="zoom-gps-campagne" class="texte-petit monospace"></div>
+            <a id="zoom-lien-carte-campagne" href="#" target="_blank" rel="noopener noreferrer" class="btn btn--contour btn--petit">
+                <?= Icone::svg('site') ?> Voir la localisation satellite
+            </a>
+        </div>
+    </div>
+</dialog>
+
+<!-- Dialogue d'enregistrement d'une pose depuis la fiche campagne ----------- -->
+<?php if ($campagne !== null && in_array(\Souriane\Core\Auth::role(), ['regie', 'agent'], true)): ?>
+<dialog id="dialogue-pose-campagne" style="border:0; border-radius:var(--rayon); padding:0; max-width:540px; width:calc(100% - 32px); box-shadow:var(--ombre-lg); background:var(--surface);">
+    <form method="post" action="<?= e(url('admin/poses')) ?>" enctype="multipart/form-data" style="padding:24px">
+        <?= Csrf::champ() ?>
+        <input type="hidden" name="campagne_id" value="<?= e((string) $campagne['id']) ?>">
+        <input type="hidden" name="retour" value="<?= e(url('admin/campagnes/' . $campagne['id'] . '#preuves-poses')) ?>">
+
+        <h2 class="panneau__titre" style="margin-bottom:18px"><?= Icone::svg('photo') ?> Ajouter une preuve de pose</h2>
+
+        <div class="champ">
+            <label class="champ__etiquette" for="pose_campagne_panneau">Panneau de la campagne <span class="requis">*</span></label>
+            <select class="liste" id="pose_campagne_panneau" name="panneau_id" required>
+                <option value="">— Choisir le panneau —</option>
+                <?php
+                $panneauxOptions = $associes !== [] ? $associes : $panneaux;
+                foreach ($panneauxOptions as $pOption):
+                    $pId = (int) ($pOption['panneau_id'] ?? $pOption['id']);
+                ?>
+                    <option value="<?= e((string) $pId) ?>">
+                        <?= e((string) $pOption['reference']) ?> — <?= e((string) $pOption['libelle']) ?> (<?= e((string) ($pOption['ville'] ?? '')) ?>)
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="champ">
+            <label class="champ__etiquette" for="pose_campagne_photo_fichier">
+                Photo prise sur le terrain <span class="requis">*</span>
+            </label>
+            <input class="saisie" type="file" id="pose_campagne_photo_fichier" name="photo_fichier"
+                   accept="image/jpeg,image/png,image/webp" capture="environment">
+            <div class="champ__aide">Photo nette de l'affiche posée sur le panneau avec le QR code visible (max 12 Mo).</div>
+            <div id="zone-apercu-campagne" style="display:none; margin-top:10px;">
+                <img id="apercu-img-campagne" src="" alt="Aperçu photo"
+                     style="max-width:100%; max-height:200px; border-radius:var(--rayon-sm); object-fit:cover; border:1px solid var(--bordure); display:block;">
+            </div>
+        </div>
+
+        <details style="margin-bottom:14px; font-size:.85rem;">
+            <summary style="cursor:pointer; color:var(--lilas-700); padding:4px 0;">Ou renseigner un chemin existant</summary>
+            <div class="champ" style="margin-top:8px;">
+                <input class="saisie" type="text" id="pose_campagne_photo" name="photo" placeholder="storage/uploads/... ou https://...">
+            </div>
+        </details>
+
+        <div class="champ">
+            <label class="champ__etiquette" for="pose_campagne_horodatage">Date et heure d'installation</label>
+            <input class="saisie" type="datetime-local" id="pose_campagne_horodatage" name="horodatage" value="<?= date('Y-m-d\TH:i') ?>">
+        </div>
+
+        <div class="grille-champs">
+            <div class="champ">
+                <label class="champ__etiquette" for="pose_campagne_lat">Latitude</label>
+                <input class="saisie" type="text" id="pose_campagne_lat" name="latitude" inputmode="decimal" placeholder="ex: 12.8150">
+            </div>
+            <div class="champ">
+                <label class="champ__etiquette" for="pose_campagne_lng">Longitude</label>
+                <input class="saisie" type="text" id="pose_campagne_lng" name="longitude" inputmode="decimal" placeholder="ex: -16.2280">
+            </div>
+        </div>
+
+        <div style="margin-top:-6px; margin-bottom:16px;">
+            <button type="button" class="btn btn--contour btn--petit" id="btn-geoloc-campagne">
+                <?= Icone::svg('gps') ?> Géolocaliser ma position actuelle
+            </button>
+            <div id="statut-geoloc-campagne" class="texte-petit" style="margin-top:6px; display:none;"></div>
+        </div>
+
+        <div class="champ">
+            <label class="champ__etiquette" for="pose_campagne_note">Note de terrain</label>
+            <textarea class="zone-texte" id="pose_campagne_note" name="note" rows="2"
+                      placeholder="Pose conforme, QR testé sous ensoleillement direct."></textarea>
+        </div>
+
+        <div class="pile pile--droite">
+            <button type="button" class="btn btn--contour" data-fermer-dialogue>Annuler</button>
+            <button type="submit" class="btn btn--primaire"><?= Icone::svg('valider') ?> Enregistrer la preuve</button>
+        </div>
+    </form>
+</dialog>
+<?php endif; ?>
+
+<script>
+(function () {
+    // Gestion ouverture / fermeture des dialogues
+    var ouvreurs = document.querySelectorAll('[data-ouvrir-dialogue]');
+    for (var i = 0; i < ouvreurs.length; i++) {
+        ouvreurs[i].addEventListener('click', function () {
+            var cible = document.getElementById(this.getAttribute('data-ouvrir-dialogue'));
+            if (cible && cible.showModal) { cible.showModal(); }
+        });
+    }
+    var fermeurs = document.querySelectorAll('[data-fermer-dialogue]');
+    for (var j = 0; j < fermeurs.length; j++) {
+        fermeurs[j].addEventListener('click', function () {
+            var d = this.closest('dialog');
+            if (d) { d.close(); }
+        });
+    }
+
+    // Zoom Photo dans la fiche campagne
+    var zoomDialog = document.getElementById('dialogue-zoom-campagne');
+    var zoomImg = document.getElementById('zoom-img-campagne');
+    var zoomPanneau = document.getElementById('zoom-panneau-campagne');
+    var zoomMeta = document.getElementById('zoom-meta-campagne');
+    var zoomStatuts = document.getElementById('zoom-statuts-campagne');
+    var zoomNoteCont = document.getElementById('zoom-note-conteneur-campagne');
+    var zoomNote = document.getElementById('zoom-note-campagne');
+    var zoomGps = document.getElementById('zoom-gps-campagne');
+    var zoomLienCarte = document.getElementById('zoom-lien-carte-campagne');
+
+    var cartesZoom = document.querySelectorAll('[data-ouvrir-zoom-campagne]');
+    for (var k = 0; k < cartesZoom.length; k++) {
+        cartesZoom[k].addEventListener('click', function () {
+            var item = this;
+            var photo = item.getAttribute('data-photo');
+            var panneau = item.getAttribute('data-panneau');
+            var format = item.getAttribute('data-format');
+            var ville = item.getAttribute('data-ville');
+            var date = item.getAttribute('data-date');
+            var agent = item.getAttribute('data-agent');
+            var lat = item.getAttribute('data-lat');
+            var lng = item.getAttribute('data-lng');
+            var note = item.getAttribute('data-note');
+            var c15 = item.getAttribute('data-c15');
+            var c30 = item.getAttribute('data-c30');
+
+            zoomImg.src = photo;
+            zoomPanneau.textContent = panneau;
+
+            var metaText = 'Posé le ' + date + ' · Par : ' + agent;
+            if (format || ville) {
+                metaText += ' · ' + [format, ville].filter(Boolean).join(' - ');
+            }
+            zoomMeta.textContent = metaText;
+
+            if (note) {
+                zoomNote.textContent = note;
+                zoomNoteCont.style.display = 'block';
+            } else {
+                zoomNoteCont.style.display = 'none';
+            }
+
+            if (lat && lng) {
+                zoomGps.textContent = 'GPS : ' + parseFloat(lat).toFixed(5) + ', ' + parseFloat(lng).toFixed(5);
+                zoomLienCarte.href = 'https://www.google.com/maps?q=' + encodeURIComponent(lat + ',' + lng);
+                zoomLienCarte.style.display = 'inline-flex';
+            } else {
+                zoomGps.textContent = 'Coordonnées GPS non renseignées';
+                zoomLienCarte.style.display = 'none';
+            }
+
+            var htmlStatuts = '';
+            var libelles = { non_fait: 'À faire', conforme: 'Conforme', non_conforme: 'Non conforme' };
+            var classes = { non_fait: 'etat--reservee', conforme: 'etat--conforme', non_conforme: 'etat--annulee' };
+            if (c15) {
+                htmlStatuts += '<span class="etat ' + (classes[c15] || '') + '">15 j : ' + (libelles[c15] || c15) + '</span>';
+            }
+            if (c30) {
+                htmlStatuts += '<span class="etat ' + (classes[c30] || '') + '">30 j : ' + (libelles[c30] || c30) + '</span>';
+            }
+            zoomStatuts.innerHTML = htmlStatuts;
+
+            if (zoomDialog && zoomDialog.showModal) {
+                zoomDialog.showModal();
+            }
+        });
+    }
+
+    // Aperçu photo téléversée
+    var inputFichier = document.getElementById('pose_campagne_photo_fichier');
+    var zoneApercu = document.getElementById('zone-apercu-campagne');
+    var apercuImg = document.getElementById('apercu-img-campagne');
+    if (inputFichier && zoneApercu && apercuImg) {
+        inputFichier.addEventListener('change', function () {
+            var fichier = this.files && this.files[0];
+            if (fichier) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    apercuImg.src = e.target.result;
+                    zoneApercu.style.display = 'block';
+                };
+                reader.readAsDataURL(fichier);
+            } else {
+                zoneApercu.style.display = 'none';
+            }
+        });
+    }
+
+    // Géolocalisation
+    var btnGeoloc = document.getElementById('btn-geoloc-campagne');
+    var statutGeoloc = document.getElementById('statut-geoloc-campagne');
+    var champLat = document.getElementById('pose_campagne_lat');
+    var champLng = document.getElementById('pose_campagne_lng');
+    if (btnGeoloc && statutGeoloc && champLat && champLng) {
+        btnGeoloc.addEventListener('click', function () {
+            if (!navigator.geolocation) {
+                alert('La géolocalisation n’est pas supportée par votre navigateur.');
+                return;
+            }
+            statutGeoloc.style.display = 'block';
+            statutGeoloc.style.color = 'var(--texte-discret)';
+            statutGeoloc.textContent = 'Acquisition de votre position satellite GPS...';
+
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                champLat.value = pos.coords.latitude.toFixed(6);
+                champLng.value = pos.coords.longitude.toFixed(6);
+                statutGeoloc.textContent = '✓ Position capturée (précision ~' + Math.round(pos.coords.accuracy) + ' m)';
+                statutGeoloc.style.color = 'var(--vert-600)';
+            }, function (err) {
+                statutGeoloc.textContent = 'Impossible de récupérer la position : ' + err.message;
+                statutGeoloc.style.color = 'var(--rouge-600)';
+            }, { enableHighAccuracy: true, timeout: 10000 });
+        });
+    }
+})();
+</script>

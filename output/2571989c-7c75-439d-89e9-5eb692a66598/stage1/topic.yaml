@@ -1,0 +1,11 @@
+detected_doc_type: "Documentation produit / note de présentation"
+target_length: 3600
+target_tone: "Français professionnel, clair et pédagogique, à la troisième personne"
+audience: "Décideurs, partenaires et prospects de la régie ; équipe projet"
+core_points:
+  - "Le problème : l'affichage extérieur classique ne laisse aucune trace mesurable."
+  - "La réponse : chaque panneau porte un QR code qui ouvre la page de l'annonceur."
+  - "Le parcours visiteur : scan, page enrichie, actions, installation, notifications."
+  - "Le parcours annonceur : demande de proposition, campagne, preuves de pose, bilan."
+  - "Le back-office de la régie et la séparation mesuré / estimé / déclaré."
+  - "Les limites assumées et la fiche technique."

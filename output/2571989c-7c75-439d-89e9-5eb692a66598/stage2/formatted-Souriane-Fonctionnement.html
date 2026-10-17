@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="docx-page-size" content="A4">
+  <title>Souriane — Comment fonctionne la plateforme, et le problème qu'elle résout</title>
+  <style>
+  /* --- CSS @page 页面模型：封面无页脚，正文页脚居中页码 --- */
+  @page {
+    @bottom-center { content: counter(page); }
+  }
+  @page cover {
+    @bottom-center { content: none; }
+  }
+  section[role="cover"] { page: cover; }
+
+  :root {
+    /* Design tokens — theme business-modern, palette adaptée à la charte Souriane */
+    --typography-fontFamily-heading: "Segoe UI", "Trebuchet MS", Calibri, Arial, sans-serif;
+    --typography-fontFamily-body: "Segoe UI", Calibri, "Helvetica Neue", Arial, sans-serif;
+    --typography-fontFamily-data: "DIN Next", Arial, sans-serif;
+    --typography-fontSize-coverTitle: 24pt;
+    --typography-fontSize-coverCategory: 11pt;
+    --typography-fontSize-h1: 20pt;
+    --typography-fontSize-h2: 14pt;
+    --typography-fontSize-h3: 11pt;
+    --typography-fontSize-body: 10.5pt;
+    --typography-fontSize-small: 9pt;
+    --typography-fontSize-tiny: 8pt;
+    --typography-lineHeight-title: 1.25;
+    --typography-lineHeight-body: 1.55;
+    --typography-fontWeight-heading: 700;
+    --typography-fontWeight-bold: 700;
+    --typography-fontWeight-body: 400;
+    --color-primary: #4C1D95;
+    --color-primaryDark: #2E1065;
+    --color-secondary: #7C3AED;
+    --color-accent: #FBBF24;
+    --color-text: #1A1033;
+    --color-muted: #6B6480;
+    --color-border: #E5E1F0;
+    --color-bg: #FFFFFF;
+    --color-surface: #F6F4FC;
+    --color-highlight: #F1ECFB;
+    --color-warning: #B45309;
+    --color-warning-bg: #FEF6EC;
+    --spacing-paragraph: 0.7em;
+    --spacing-block: 1em;
+    --spacing-section: 1.9em;
+    --layout-margin: 2.4cm;
+    --layout-contentWidth: 16.2cm;
+
+    /* Local aliases */
+    --fs-h1: var(--typography-fontSize-h1, 20pt);
+    --fs-h2: var(--typography-fontSize-h2, 14pt);
+    --fs-h3: var(--typography-fontSize-h3, 11pt);
+    --fs-body: var(--typography-fontSize-body, 10.5pt);
+    --fs-small: var(--typography-fontSize-small, 9pt);
+    --fs-title: var(--typography-fontSize-coverTitle, 24pt);
+    --ff-heading: var(--typography-fontFamily-heading, "Segoe UI", sans-serif);
+    --ff-body: var(--typography-fontFamily-body, "Segoe UI", sans-serif);
+    --lh-body: var(--typography-lineHeight-body, 1.55);
+    --fw-bold: var(--typography-fontWeight-bold, 700);
+    --fw-normal: var(--typography-fontWeight-body, 400);
+    --color-summary-bg: var(--color-highlight, #F1ECFB);
+    --color-summary-border: var(--color-primary, #4C1D95);
+    --color-emphasis: var(--color-primary, #4C1D95);
+    --summary-border-width: 4px;
+    --page-content-width: var(--layout-contentWidth, 16.2cm);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: var(--ff-body);
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    max-width: var(--page-content-width);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* --- Cover --- */
+  .report-cover {
+    min-height: 62vh;
+    padding: var(--spacing-section) 0;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--spacing-section);
+  }
+  .cover-category {
+    font-family: var(--ff-heading);
+    font-size: var(--typography-fontSize-coverCategory, 11pt);
+    font-weight: var(--fw-bold);
+    color: var(--color-secondary);
+    letter-spacing: 0.14em;
+    text-align: left;
+    margin-bottom: var(--spacing-block);
+  }
+  .cover-title {
+    font-family: var(--ff-heading);
+    font-size: var(--fs-title);
+    font-weight: var(--fw-bold);
+    color: var(--color-primaryDark);
+    line-height: var(--typography-lineHeight-title, 1.25);
+    text-align: left;
+    margin-bottom: var(--spacing-block);
+  }
+  .cover-subtitle {
+    font-family: var(--ff-body);
+    font-size: var(--fs-h3);
+    color: var(--color-muted);
+    text-align: left;
+    margin-bottom: var(--spacing-section);
+  }
+  .cover-meta p {
+    font-size: var(--fs-small);
+    color: var(--color-muted);
+    text-align: left;
+    margin-bottom: var(--spacing-paragraph);
+  }
+
+  /* --- Table of contents --- */
+  .doc-toc {
+    padding: var(--spacing-block) 0;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--spacing-section);
+  }
+  .toc-title {
+    font-family: var(--ff-heading);
+    font-size: var(--fs-h3);
+    font-weight: var(--fw-bold);
+    color: var(--color-primaryDark);
+    margin-bottom: var(--spacing-block);
+  }
+  .toc-list, .toc-list ol, .toc-list ul {
+    list-style: none;
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+  }
+  .toc-list li { margin-bottom: var(--spacing-paragraph); }
+  .toc-list a { color: var(--color-primary); text-decoration: none; }
+
+  /* --- Executive summary --- */
+  .executive-summary {
+    margin: 0 0 var(--spacing-section) 0;
+    padding: var(--spacing-block);
+    border-left: var(--summary-border-width) solid var(--color-summary-border);
+    background: var(--color-summary-bg);
+  }
+  .summary-header { margin-bottom: var(--spacing-block); }
+  .summary-header h2 {
+    font-family: var(--ff-heading);
+    font-size: var(--fs-h2);
+    font-weight: var(--fw-bold);
+    color: var(--color-primaryDark);
+    margin: 0;
+  }
+  .summary-badge {
+    font-size: var(--fs-small);
+    color: var(--color-muted);
+    font-style: italic;
+  }
+  .summary-body p { margin-bottom: var(--spacing-paragraph); }
+
+  /* --- Body --- */
+  h2 {
+    font-family: var(--ff-heading);
+    font-size: var(--fs-h2);
+    font-weight: var(--fw-bold);
+    color: var(--color-primaryDark);
+    margin-top: var(--spacing-section);
+    margin-bottom: var(--spacing-paragraph);
+  }
+  h3 {
+    font-family: var(--ff-heading);
+    font-size: var(--fs-h3);
+    font-weight: var(--fw-bold);
+    color: var(--color-primary);
+    margin-top: var(--spacing-block);
+    margin-bottom: var(--spacing-paragraph);
+  }
+  p { margin-bottom: var(--spacing-paragraph); }
+  ul, ol { margin: 0 0 var(--spacing-paragraph) var(--spacing-block); padding-left: 0; }
+  li { margin-bottom: var(--spacing-paragraph); }
+  strong { font-weight: var(--fw-bold); color: var(--color-primaryDark); }
+  .data-emphasis { color: var(--color-emphasis); font-weight: var(--fw-bold); }
+
+  /* --- Tables --- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--spacing-block) 0 var(--spacing-section) 0;
+    font-size: var(--fs-small);
+  }
+  th, td {
+    border: 1px solid var(--color-border);
+    padding: var(--spacing-paragraph) var(--spacing-block);
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--color-highlight);
+    color: var(--color-primaryDark);
+    font-family: var(--ff-heading);
+    font-weight: var(--fw-bold);
+  }
+
+  /* --- Callout --- */
+  [data-component="callout"] {
+    padding: var(--spacing-block);
+    margin: var(--spacing-paragraph) 0 var(--spacing-section) 0;
+    border-left: var(--summary-border-width) solid var(--color-primary);
+    background: var(--color-surface);
+  }
+  [data-component="callout"][data-variant="warning"] {
+    border-left-color: var(--color-warning);
+    background: var(--color-warning-bg);
+  }
+  [data-component="callout"] p { margin-bottom: var(--spacing-paragraph); }
+  [data-component="callout"] p:last-child { margin-bottom: 0; }
+
+  /* --- Divider --- */
+  [data-component="divider"] {
+    border-top: 1px solid var(--color-border);
+    margin: var(--spacing-section) 0;
+  }
+  </style>
+</head>
+<body>
+  <!-- 封面与正文是相邻顶层 section，正文会自动另起一页 -->
+  <section role="cover" class="report-cover">
+    <p class="cover-category">DOCUMENTATION PRODUIT</p>
+    <h1 class="cover-title">Souriane — Comment fonctionne la plateforme, et le problème qu'elle résout</h1>
+    <p class="cover-subtitle">Affichage extérieur connecté — Bignona · Ziguinchor, Casamance</p>
+    <div class="cover-meta">
+      <p>Régie d'affichage connecté Souriane</p>
+      <p>Note de présentation — version 1.0</p>
+      <p>Octobre 2026</p>
+    </div>
+  </section>
+
+  <section role="body" class="report-body" data-page-restart="1">
+    <nav class="doc-toc" aria-label="Sommaire">
+      <p class="toc-title">Sommaire</p>
+      <ol class="toc-list">
+        <li><a href="#section-1">1. En bref</a></li>
+        <li><a href="#section-2">2. Le problème : un panneau vu par beaucoup, mais qui ne dit rien</a></li>
+        <li><a href="#section-3">3. La réponse de Souriane : le panneau qui se mesure</a></li>
+        <li><a href="#section-4">4. Comment ça marche, côté visiteur</a></li>
+        <li><a href="#section-5">5. Comment ça marche, côté annonceur</a></li>
+        <li><a href="#section-6">6. Comment ça marche, côté régie</a></li>
+        <li><a href="#section-7">7. Ce que la plateforme ne fait pas (limites assumées)</a></li>
+        <li><a href="#section-8">8. Les bénéfices, concrètement</a></li>
+        <li><a href="#section-9">9. Fiche technique</a></li>
+      </ol>
+    </nav>
+
+    <div class="executive-summary">
+      <div class="summary-header">
+        <h2>En résumé</h2>
+        <span class="summary-badge">Synthèse</span>
+      </div>
+      <div class="summary-body">
+        <p>&nbsp;&nbsp;Souriane est une plateforme d'affichage extérieur connecté conçue pour la région de Bignona et de Ziguinchor, en Casamance. Chaque panneau porte un QR code qui ouvre la page d'un annonceur local : le support physique cesse d'être muet et devient un point de contact mesurable.</p>
+        <p>Là où un panneau classique ne renvoie aucune donnée, Souriane compte chaque scan, chaque appel, chaque message, puis restitue à l'annonceur un bilan chiffré — en distinguant toujours ce qui est <strong>mesuré</strong> de ce qui est <strong>estimé</strong>.</p>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Ce que fait Souriane</th><th>Concrètement</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Mesure</td><td>Scans, visiteurs uniques, appels, messages WhatsApp, demandes d'itinéraire, abonnements</td></tr>
+          <tr><td>Relie</td><td>Un panneau physique à une page numérique mesurable, via une URL courte</td></tr>
+          <tr><td>Restitue</td><td>Un bilan de fin de campagne qui sépare mesuré, estimé et déclaré</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <main>
+      <h2 id="section-1">1. En bref</h2>
+      <p>Souriane repose sur une idée simple : <strong>chaque panneau d'affichage porte un QR code qui ouvre la page d'un annonceur local</strong>.</p>
+      <p>Là où un panneau classique se contente d'être vu, un panneau Souriane devient un point de contact mesurable. Le passant qui le souhaite scanne le code, arrive sur une page enrichie, peut appeler, écrire sur WhatsApp, demander son itinéraire, s'abonner aux prochaines offres. Chacune de ces actions est comptée. L'annonceur, à la fin de sa campagne, dispose d'un bilan chiffré au lieu d'une impression.</p>
+      <p>En une phrase : <strong>Souriane relie un support physique, qui ne laisse aucune trace, à une mesure numérique, qui laisse des traces exploitables.</strong></p>
+
+      <h2 id="section-2">2. Le problème : un panneau vu par beaucoup, mais qui ne dit rien</h2>
+      <p>L'affichage extérieur traditionnel souffre d'un défaut structurel. Un panneau de bord de route est vu par des milliers de personnes chaque jour, mais il ne renvoie <strong>aucune information</strong> à celui qui l'a payé.</p>
+      <p>Concrètement, l'annonceur se heurte à trois murs :</p>
+      <ul>
+        <li><strong>Il ne sait pas combien de personnes ont réagi.</strong> Le panneau est un média à sens unique. On peut estimer le trafic qui passe devant, jamais le nombre de personnes qui ont effectivement prêté attention, ni combien ont agi.</li>
+        <li><strong>Le lien entre le panneau et l'acte d'achat est rompu.</strong> Quelqu'un voit une promotion, veut appeler le commerce, puis oublie le numéro. Rien ne relie l'envie née devant le panneau à la visite en boutique.</li>
+        <li><strong>La mesure est déclarative.</strong> Les chiffres d'audience d'un panneau sont des estimations de comptage terrain, présentées comme telles. Ce ne sont pas des mesures.</li>
+      </ul>
+      <p>Pour une petite entreprise locale, ces murs sont encore plus hauts. Elle n'a ni les moyens d'une régie nationale, ni d'outil pour suivre ce que produit son affichage. Elle paie pour un support et repart avec une intuition.</p>
+      <p>C'est ce vide que Souriane comble : <strong>rendre l'affichage extérieur lisible, mesurable et exploitable, y compris pour un commerce de quartier.</strong></p>
+
+      <h2 id="section-3">3. La réponse de Souriane : le panneau qui se mesure</h2>
+      <p>Le cœur de la plateforme tient en une mécanique : <strong>le QR code, l'URL courte, la page de l'annonceur.</strong></p>
+      <p>Plutôt que d'imprimer l'adresse complète d'un site sur le panneau — longue, fragile, impossible à retenir — la plateforme encode une <strong>URL courte</strong> du type <span class="data-emphasis">sr.n/xxxx</span>. Ce code ne dépend pas de l'annonceur : il pointe vers une redirection interne. Quand le visiteur scanne, la plateforme :</p>
+      <ol>
+        <li>reconnaît le code court ;</li>
+        <li>enregistre une visite et un scan ;</li>
+        <li>redirige vers la <strong>page publique</strong> de l'annonceur associé.</li>
+      </ol>
+      <p>Ce détour par une URL courte n'est pas un détail. Il permet de <strong>changer la destination d'un code sans réimprimer le panneau</strong>, de mesurer chaque scan, et de rattacher la visite à la campagne et au panneau concernés.</p>
+      <p>Ce que cela change pour l'annonceur :</p>
+      <ul>
+        <li>chaque scan devient un événement compté ;</li>
+        <li>chaque action sur la page devient une intention lisible (appel, message, itinéraire, abonnement) ;</li>
+        <li>le panneau cesse d'être un coût opaque pour devenir un support dont on suit les effets.</li>
+      </ul>
+
+      <h2 id="section-4">4. Comment ça marche, côté visiteur</h2>
+      <p>Du point de vue du public, l'expérience tient en trois temps : le scan, la page, puis la relation qui se prolonge après la visite.</p>
+      <h3>4.1 Le scan</h3>
+      <p>Le passant voit le panneau, lit l'offre, puis scanne le QR code avec son téléphone. Il est redirigé vers la page de l'annonceur. Il peut aussi arriver par un lien direct ou par une puce NFC, quand le support en est équipé : la plateforme distingue ces sources pour ne pas mélanger les mesures.</p>
+      <h3>4.2 La page annonceur</h3>
+      <p>La page est pensée pour un téléphone, en connexion mobile parfois lente. Elle présente l'annonceur et son offre dans un ordre de lecture imposé, puis propose des actions immédiates :</p>
+      <ul>
+        <li><strong>Appeler</strong> le commerce ;</li>
+        <li><strong>Écrire sur WhatsApp</strong> avec un message pré-rempli ;</li>
+        <li><strong>Demander l'itinéraire</strong> vers la boutique ;</li>
+        <li><strong>Suivre</strong> l'annonceur sur ses réseaux ;</li>
+        <li><strong>Rester informé</strong> des prochaines offres.</li>
+      </ul>
+      <p>Chaque action est un bouton clair, et chaque appui est compté comme une interaction. La page ne demande aucun nom, aucun numéro, aucune donnée personnelle pour être consultée.</p>
+      <h3>4.3 Après la visite : installation et notifications</h3>
+      <p>Un visiteur intéressé peut <strong>installer la page sur son écran d'accueil</strong>, comme une petite application, et <strong>s'abonner aux notifications</strong> de l'annonceur. Il reçoit alors les offres suivantes directement sur son téléphone.</p>
+      <p>Deux garde-fous encadrent ce canal :</p>
+      <ul>
+        <li>quatre notifications par mois et par annonceur, au maximum — le canal reste utile, il ne devient pas du harcèlement ;</li>
+        <li>un canal WhatsApp de repli pour les appareils qui ne prennent pas en charge les notifications ;</li>
+        <li>sur iPhone, l'abonnement est possible après ajout de la page à l'écran d'accueil, conformément aux contraintes du système.</li>
+      </ul>
+      <div data-component="callout" data-variant="info">
+        <p>&nbsp;&nbsp;<strong>Un canal, pas une intrusion.</strong> L'abonnement est toujours volontaire, plafonné à quatre envois par mois et par annonceur, et la désinscription se fait en un clic, sans justification.</p>
+      </div>
+
+      <h2 id="section-5">5. Comment ça marche, côté annonceur</h2>
+      <p>Pour l'annonceur, le parcours va de la première demande jusqu'au bilan de fin de campagne. Il commence par un formulaire public, se poursuit par la préparation de la campagne, puis par son suivi.</p>
+      <h3>5.1 Formuler une demande</h3>
+      <p>Un prospect qui veut afficher commence par <strong>décrire son projet</strong> depuis le site public. Un formulaire dédié lui demande :</p>
+      <ul>
+        <li>le nom de son enseigne ou de son entreprise ;</li>
+        <li>la personne à contacter, son e-mail et, en option, son téléphone ;</li>
+        <li>la ville visée ;</li>
+        <li>les formats de panneaux souhaités ;</li>
+        <li>la période envisagée ;</li>
+        <li>l'enveloppe budgétaire, en option ;</li>
+        <li>un message libre pour préciser son besoin.</li>
+      </ul>
+      <p>La demande est enregistrée et arrive directement dans le back-office de la régie, classée « nouveau ». La régie la traite, la marque comme contactée, puis convertie ou archivée. Le prospect est recontacté pour la suite.</p>
+      <h3>5.2 La campagne et sa préparation</h3>
+      <p>La régie crée ensuite le compte annonceur, sa <strong>page publique</strong> — celle que verront les visiteurs — et la <strong>campagne</strong> : période, formule, panneaux retenus. Le prix se calcule à partir de la formule choisie, de la durée d'affichage et du nombre de panneaux, avec les remises par palier appliquées automatiquement.</p>
+      <p>Point important : la disponibilité d'un panneau se lit <strong>mois par mois, avant toute réservation</strong>. La plateforme empêche la double réservation : deux campagnes ne peuvent pas occuper le même panneau sur la même période.</p>
+      <h3>5.3 Pendant la campagne</h3>
+      <p>Chaque pose fait l'objet d'une <strong>preuve photographique horodatée et géolocalisée</strong>. Un contrôle de conformité est prévu à quinze jours, puis à trente jours. L'annonceur a la garantie que son affichage a bien été posé, au bon endroit, au bon moment.</p>
+      <p>En parallèle, les interactions sont comptées en continu : scans, visiteurs uniques, appels, messages WhatsApp, demandes d'itinéraire, installations et abonnements.</p>
+      <h3>5.4 Le bilan de fin de campagne</h3>
+      <p>À la fin, la plateforme produit un <strong>rapport de fin de campagne</strong> qui distingue rigoureusement <strong>trois natures de données</strong> :</p>
+      <table>
+        <thead>
+          <tr><th>Nature</th><th>Signification</th><th>Exemple</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Mesuré</strong></td><td>Compté directement par la plateforme</td><td>Scans, visiteurs uniques, clics d'appel</td></tr>
+          <tr><td><strong>Estimé</strong></td><td>Calculé à partir du trafic déclaré des panneaux</td><td>Portée estimée sur la durée</td></tr>
+          <tr><td><strong>Déclaré</strong></td><td>Fourni par la régie</td><td>Trafic journalier du panneau</td></tr>
+        </tbody>
+      </table>
+      <div data-component="callout" data-variant="info">
+        <p>&nbsp;&nbsp;<strong>Une règle de la plateforme :</strong> aucune estimation n'est jamais présentée comme une mesure. L'annonceur sait exactement ce qui a été constaté et ce qui a été extrapolé.</p>
+      </div>
+
+      <h2 id="section-6">6. Comment ça marche, côté régie</h2>
+      <p>Le back-office est l'outil de pilotage de la régie. Il repose sur une séparation nette des rôles, un ensemble de rubriques dédiées, et une vue d'ensemble du parc de panneaux.</p>
+      <h3>6.1 Les trois rôles</h3>
+      <p>La plateforme sépare clairement les responsabilités :</p>
+      <table>
+        <thead>
+          <tr><th>Rôle</th><th>Périmètre</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Régie</strong></td><td>Accès complet : commercial, diffusion, exploitation, système</td></tr>
+          <tr><td><strong>Agent terrain</strong></td><td>Parc, poses, QR codes, lecture des campagnes</td></tr>
+          <tr><td><strong>Annonceur</strong></td><td>Ses propres campagnes et leurs statistiques, uniquement</td></tr>
+        </tbody>
+      </table>
+      <p>Un annonceur ne voit jamais les données d'un autre annonceur : le rôle ouvre une rubrique, il n'ouvre pas les données des autres.</p>
+      <h3>6.2 Les outils du back-office</h3>
+      <p>Le back-office regroupe tout le pilotage :</p>
+      <ul>
+        <li><strong>Tableau de bord et statistiques</strong> — l'activité en un coup d'œil ;</li>
+        <li><strong>Annonceurs et demandes</strong> — les fiches clients et les demandes reçues du site public ;</li>
+        <li><strong>Campagnes et panneaux</strong> — la réservation du parc et le calcul des prix ;</li>
+        <li><strong>Pages publiques</strong> — le contenu que verront les visiteurs ;</li>
+        <li><strong>QR codes</strong> — la génération et l'export des codes à imprimer ;</li>
+        <li><strong>Notifications</strong> — la rédaction et l'envoi des messages aux abonnés ;</li>
+        <li><strong>Preuves de pose</strong> — les photos horodatées et géolocalisées ;</li>
+        <li><strong>Journal</strong> — l'historique des opérations ;</li>
+        <li><strong>Utilisateurs, paramètres et sécurité du compte</strong>.</li>
+      </ul>
+      <h3>6.3 Le parc de panneaux</h3>
+      <p>Le parc est consultable en ligne : référence, emplacement, ville, format, nombre de faces, trafic estimé et statut. La page du parc permet de filtrer par ville et de lire, d'un coup d'œil, ce qui est disponible, réservé, occupé ou en maintenance.</p>
+
+      <h2 id="section-7">7. Ce que la plateforme ne fait pas (limites assumées)</h2>
+      <p>Un document honnête dit aussi ce que l'outil ne prétend pas faire.</p>
+      <ul>
+        <li><strong>Le trafic d'un panneau est une estimation déclarée, pas une mesure.</strong> Les chiffres de trafic servent à calculer une portée estimée. Ils sont tenus distincts des scans réellement mesurés. C'est une règle de conception, pas un oubli.</li>
+        <li><strong>La conversion d'une demande en annonceur n'est pas encore automatisée.</strong> Aujourd'hui, la régie traite la demande puis crée l'annonceur manuellement. Le lien entre les deux n'est pas encore automatique.</li>
+        <li><strong>La plateforme ne remplace pas le panneau.</strong> Elle ne mesure pas les personnes qui regardent le panneau sans scanner. Elle mesure celles qui font la démarche de scanner, et tout ce qui suit.</li>
+      </ul>
+      <div data-component="callout" data-variant="warning">
+        <p>&nbsp;&nbsp;<strong>À retenir.</strong> Ces limites sont connues et documentées : elles dessinent la feuille de route autant qu'elles décrivent l'existant.</p>
+      </div>
+
+      <div data-component="divider"></div>
+
+      <h2 id="section-8">8. Les bénéfices, concrètement</h2>
+      <table>
+        <thead>
+          <tr><th>Acteur</th><th>Ce qu'il gagne</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Annonceur</strong></td><td>Un bilan chiffré au lieu d'une intuition ; la preuve de pose ; un canal d'abonnement vers ses clients</td></tr>
+          <tr><td><strong>Visiteur</strong></td><td>Une page utile et rapide, des actions en un geste, des offres suivies volontairement</td></tr>
+          <tr><td><strong>Régie</strong></td><td>Un parc géré et réservable en ligne, des demandes centralisées, un suivi des poses</td></tr>
+          <tr><td><strong>Petite entreprise locale</strong></td><td>Un accès à un affichage mesurable, sans outil technique à sa charge</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="section-9">9. Fiche technique</h2>
+      <table>
+        <thead>
+          <tr><th>Élément</th><th>Valeur</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Langage</td><td>PHP 8.3, sans framework ni dépendance Composer</td></tr>
+          <tr><td>Base de données</td><td>MySQL 8+ (testé sur 9.1), moteur InnoDB, encodage utf8mb4</td></tr>
+          <tr><td>Accès aux données</td><td>PDO en requêtes préparées exclusivement</td></tr>
+          <tr><td>Côté client</td><td>JavaScript natif, aucune bibliothèque lourde</td></tr>
+          <tr><td>Application installable</td><td>PWA (manifest + service worker)</td></tr>
+          <tr><td>Mots de passe</td><td>Argon2id</td></tr>
+          <tr><td>Mesure d'audience</td><td>Empreinte non réversible de l'adresse réseau (HMAC-SHA256) ; jamais d'IP en clair</td></tr>
+          <tr><td>Protection des formulaires</td><td>Jeton CSRF par session</td></tr>
+          <tr><td>Page annonceur</td><td>Légère, optimisée pour le mobile</td></tr>
+        </tbody>
+      </table>
+      <p>En résumé, Souriane transforme un support muet en point de contact mesurable : le panneau ouvre une page, la page déclenche des actions, les actions nourrissent un bilan honnête — mesuré quand c'est mesuré, estimé quand c'est estimé.</p>
+    </main>
+  </section>
+</body>
+</html>

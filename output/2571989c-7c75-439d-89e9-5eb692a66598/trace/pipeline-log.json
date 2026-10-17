@@ -1,0 +1,51 @@
+{
+  "request_id": "2571989c-7c75-439d-89e9-5eb692a66598",
+  "entry_type": "full_pipeline",
+  "user_query": "je veux que tu me créer un document word pour explicaquer comment fonctionneme la plateforme et aussi et le probléme résolu",
+  "stage_1": {
+    "agent": "doc-writer",
+    "genre": "general",
+    "expert_used": "general-writer",
+    "route_tag": "general_writing",
+    "critic_decision": null,
+    "output_path": "stage1/final_draft.md"
+  },
+  "stage_2": {
+    "agent": "doc-formatter",
+    "route": "html",
+    "html_sub": "template",
+    "genre": "business-report",
+    "template_used": "business-report",
+    "design_theme": "business-modern (palette recolorée charte Souriane)",
+    "skills_invoked": ["design-token", "doc-typeset", "html-review"],
+    "html_review_attempts": 0,
+    "review_score": 100,
+    "review_dimensions": {
+      "design_token_compliance": 100,
+      "structural_integrity": 100,
+      "typographic_quality": 100,
+      "genre_fit": 100,
+      "decoration_usage": 100,
+      "security": 100
+    },
+    "output_path": "stage2/formatted-Souriane-Fonctionnement.html",
+    "output_format": "html",
+    "fallback": false
+  },
+  "stage_3": {
+    "agent": "doc-converter",
+    "skill_used": "html-to-docx",
+    "operations": "html_to_docx_convert",
+    "success": true,
+    "output_path": "stage3/Souriane - Fonctionnement de la plateforme.docx",
+    "page_size": "A4",
+    "orientation": "portrait",
+    "margins_cm": { "top": 2.4, "bottom": 2.0, "left": 2.4, "right": 2.4 },
+    "warnings": [],
+    "present_files_opened": true,
+    "fallback": false,
+    "fallback_reason": null,
+    "docx_stats": { "paragraphs": 108, "tables": 8, "sections": 2 }
+  },
+  "timestamp": "2026-10-16T19:56:00Z"
+}

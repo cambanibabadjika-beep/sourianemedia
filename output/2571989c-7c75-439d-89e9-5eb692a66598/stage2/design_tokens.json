@@ -1,0 +1,41 @@
+{
+  "genre": "business-report",
+  "theme_name": "business-modern",
+  "theme_source": "skills/design-token/tokens/compiled/business-report.json",
+  "brand_adaptation": "Palette recolorée sur la charte Souriane (violet profond + lilas + doré) ; structure typographique business-modern conservée.",
+  "css_variables": {
+    "--typography-fontFamily-heading": "\"Segoe UI\", \"Trebuchet MS\", Calibri, Arial, sans-serif",
+    "--typography-fontFamily-body": "\"Segoe UI\", Calibri, \"Helvetica Neue\", Arial, sans-serif",
+    "--typography-fontSize-coverTitle": "24pt",
+    "--typography-fontSize-coverCategory": "11pt",
+    "--typography-fontSize-h1": "20pt",
+    "--typography-fontSize-h2": "14pt",
+    "--typography-fontSize-h3": "11pt",
+    "--typography-fontSize-body": "10.5pt",
+    "--typography-fontSize-small": "9pt",
+    "--typography-lineHeight-body": "1.55",
+    "--typography-fontWeight-bold": "700",
+    "--color-primary": "#4C1D95",
+    "--color-primaryDark": "#2E1065",
+    "--color-secondary": "#7C3AED",
+    "--color-accent": "#FBBF24",
+    "--color-text": "#1A1033",
+    "--color-muted": "#6B6480",
+    "--color-border": "#E5E1F0",
+    "--color-bg": "#FFFFFF",
+    "--color-surface": "#F6F4FC",
+    "--color-highlight": "#F1ECFB",
+    "--color-warning": "#B45309",
+    "--spacing-paragraph": "0.7em",
+    "--spacing-block": "1em",
+    "--spacing-section": "1.9em",
+    "--layout-margin": "2.4cm",
+    "--layout-contentWidth": "16.2cm"
+  },
+  "page": {
+    "size": "A4",
+    "content_width": "16.2cm",
+    "footer": "@bottom-center counter(page)",
+    "cover_page": "@page cover -> footer none"
+  }
+}

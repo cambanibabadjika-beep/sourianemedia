@@ -34,6 +34,8 @@
 
 # --- Interdire l’accès direct au code applicatif ----------------------------
 <IfModule mod_rewrite.c>
+    # Laisser passer les fichiers et photos téléversés
+    RewriteRule ^storage/uploads/ - [L]
     RewriteRule ^(app|storage|sql|cron)/ - [F,L]
 </IfModule>
 
